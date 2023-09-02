@@ -74,6 +74,8 @@ import { source as h3 } from './data/header-3'
 import { source as h3s } from './data/icons/header-3'
 import { source as h4 } from './data/header-4'
 import { source as h4s } from './data/icons/header-4'
+import { source as h5 } from './data/header-5'
+import { source as h5s } from './data/icons/header-5'
 import { source as m1 } from './data/testimonial-1'
 import { source as m1s } from './data/icons/testimonial-1'
 import { source as m2 } from './data/testimonial-2'
@@ -102,6 +104,8 @@ import { source as r5 } from './data/hero-5'
 import { source as r5s } from './data/icons/hero-5'
 import { source as r6 } from './data/hero-6'
 import { source as r6s } from './data/icons/hero-6'
+import { source as n1 } from './data/navbar-1'
+import { source as n1s } from './data/icons/navbar-1'
 import { source as s1 } from './data/statistic-1'
 import { source as s1s } from './data/icons/statistic-1'
 import { source as s2 } from './data/statistic-2'
@@ -480,6 +484,14 @@ const sources = [
     // order: 1
   },
   {
+    id: 'header-block-5',
+    class: '',
+    label: h5s,
+    content: h5,
+    category: 'Header',
+    // order: 1
+  },
+  {
     id: 'hero-block-1',
     class: '',
     label: r1s,
@@ -525,6 +537,14 @@ const sources = [
     label: r6s,
     content: r6,
     category: 'Hero',
+    // order: 1
+  },
+  {
+    id: 'navbar-1',
+    class: '',
+    label: n1s,
+    content: n1,
+    category: 'Navbar',
     // order: 1
   },
   {
