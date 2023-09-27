@@ -1,11 +1,11 @@
 {
-    "name": "grapesjs-tailwind",
-    "version": "1.0.485",
-    "description": "Grapesjs Tailwind",
+    "name": "@rustyroad/editor",
+    "version": "0.0.4",
+    "description": "A web-based editor for Rusty Road",
     "main": "dist/grapesjs-tailwind.min.js",
     "repository": {
         "type": "git",
-        "url": "https://github.com/Ju99ernaut/grapesjs-tailwind.git"
+        "url": "https://github.com/rustyroad/editor.git"
     },
     "scripts": {
         "start": "grapesjs-cli serve",
