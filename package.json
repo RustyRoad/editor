@@ -1,6 +1,6 @@
 {
     "name": "@rustyroad/editor",
-    "version": "0.0.4",
+    "version": "0.0.1-alpha.0",
     "description": "A web-based editor for Rusty Road",
     "main": "dist/grapesjs-tailwind.min.js",
     "repository": {
