@@ -93,9 +93,14 @@
         noticeOnUnload: false,
         storageManager: false,
         selectorManager: { escapeName },
-        plugins: ['grapesjs-tailwind'],
+        plugins: ['@rustyroad/editor', 'grapesjs-script-editor'],
         pluginsOpts: {
-            'grapesjs-tailwind': { /* Test here your options  */ }
+            '@rustyroad/editor': {
+                // options
+            },
+            'grapesjs-script-editor': {
+                // options
+            },
         }
     });
 
