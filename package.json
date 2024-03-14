@@ -1,6 +1,6 @@
 {
     "name": "@rustyroad/editor",
-    "version": "0.0.1-alpha.0",
+    "version": "0.0.2",
     "description": "A web-based editor for Rusty Road",
     "main": "dist/grapesjs-tailwind.min.js",
     "repository": {
@@ -8,7 +8,7 @@
         "url": "https://github.com/rustyroad/editor.git"
     },
     "scripts": {
-        "start": "grapesjs-cli serve",
+        "dev": "grapesjs-cli serve",
         "build": "grapesjs-cli build",
         "bump": "npm version patch -m 'Bump v%s'"
     },
@@ -21,6 +21,13 @@
     },
     "license": "MIT",
     "dependencies": {
-        "css": "^3.0.0"
+        "css": "^3.0.0",
+        "grapesjs-component-code-editor": "^1.0.20",
+        "grapesjs-custom-code": "^1.0.2",
+        "grapesjs-plugin-forms": "^2.0.6",
+        "grapesjs-script-editor": "^1.0.3",
+        "grapesjs-style-filter": "^1.0.2",
+        "grapesjs-tailwind": "^1.0.10",
+        "grapesjs-tooltip": "^0.1.8"
     }
 }
