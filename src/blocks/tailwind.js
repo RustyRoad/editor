@@ -44,6 +44,8 @@ import { source as e2 } from './data/ecommerce-2'
 import { source as e2s } from './data/icons/ecommerce-2'
 import { source as e3 } from './data/ecommerce-3'
 import { source as e3s } from './data/icons/ecommerce-3'
+import { source as e4 } from './data/ecommerce-checkout-1'
+import { source as e4s } from './data/icons/ecommerce-checkout-1'
 import { source as f1 } from './data/feature-1'
 import { source as f1s } from './data/icons/feature-1'
 import { source as f2 } from './data/feature-2'
@@ -322,6 +324,13 @@ const sources = [
     content: e3,
     category: 'Commerce',
     // order: 1
+  },
+  {
+    id: 'commerce-block-4',
+    class: '',
+    label: e4s,
+    content: e4,
+    category: 'Commerce',
   },
   {
     id: 'feature-block-1',

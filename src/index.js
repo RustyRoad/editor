@@ -1,7 +1,7 @@
 import en from './locale/en';
 import loadBlocks from './blocks';
 import loadCommands from './commands';
-
+import grapesjs from 'grapesjs';
 export default (editor, opts = {}) => {
   const options = {
     ...{
