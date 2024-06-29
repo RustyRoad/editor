@@ -6,15 +6,13 @@ export default (product) => {
 
 
 
+  // const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
 
-
-  const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
-
-  const appearance = { /* appearance */ };
-  const options = { /* options */ };
-  const elements = stripe.elements({ clientSecret, appearance });
-  const paymentElement = elements.create('payment', options);
-  paymentElement.mount('#payment-element');
+  // const appearance = { /* appearance */ };
+  // const options = { /* options */ };
+  // const elements = stripe.elements({ clientSecret, appearance });
+  // const paymentElement = elements.create('payment', options);
+  // paymentElement.mount('#payment-element');
 
 
 

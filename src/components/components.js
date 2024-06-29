@@ -4,20 +4,17 @@ import webinarCheckout1 from "./webinar-checkout-1";
 export default (editor, opts = {}) => {
   const domc = editor.DomComponents;
 
-  domc.addType('webinar-checkout-1', {
+  domc.addType('Checkout 2 Step', {
     isComponent: el => {
-      if (el.tagName === 'H1') {
-        return { type: 'webinar-checkout-1' };
+      if (el.tagName === 'text' && el.getAttribute('data-gjs-type') === 'webinar-checkout-2') {
+        return { type: 'webinar-checkout-2' };
       }
     },
     model: {
       defaults: {
-        tagName: 'h1',
-        attributes: { title: 'Checkout' },
-        components: {
-          type: 'text',
-          content: 'Click this component and then click the gear icon to use this component.'
-        },
+        tagName: 'div',
+        attributes: { 'data-gjs-type': 'webinar-checkout-2' },
+        content: 'Select this component and click the gear icon to select a product.',
         traits: [
           {
             type: 'select',

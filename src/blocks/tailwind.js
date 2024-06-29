@@ -660,10 +660,11 @@ const sources = [
     // order: 1
   },
   {
-    id: 'webinar-checkout-1',
+    id: 'Webinar Checkout 1',
     class: '',
     label: m3s,
-    content: {type: 'webinar-checkout-1'},
+    category: 'Commerce',
+    content: {type: 'Checkout 2 Step'},
   } 
 ]
 
