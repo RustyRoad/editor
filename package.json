@@ -1,6 +1,6 @@
 {
     "name": "@rustyroad/editor",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "description": "A web-based editor for Rusty Road",
     "main": "dist/index.js",
     "repository": {
@@ -29,6 +29,7 @@
         "grapesjs-script-editor": "^1.0.3",
         "grapesjs-style-filter": "^1.0.2",
         "grapesjs-tailwind": "^1.0.10",
-        "grapesjs-tooltip": "^0.1.8"
+        "grapesjs-tooltip": "^0.1.8",
+        "stripe": "^16.1.0"
     }
 }

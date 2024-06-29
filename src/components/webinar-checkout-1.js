@@ -1,4 +1,24 @@
-export const source = ` 
+import Stripe from 'stripe';
+
+
+export default (product) => {
+  console.log("product", product);
+
+
+
+
+
+  const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+
+  const appearance = { /* appearance */ };
+  const options = { /* options */ };
+  const elements = stripe.elements({ clientSecret, appearance });
+  const paymentElement = elements.create('payment', options);
+  paymentElement.mount('#payment-element');
+
+
+
+  return `
 <!-- Background color split screen for large screens -->
 <div class="fixed left-0 top-0 hidden h-full w-1/2 bg-white lg:block" aria-hidden="true"></div>
 <div class="fixed right-0 top-0 hidden h-full w-1/2 bg-indigo-900 lg:block" aria-hidden="true"></div>
@@ -16,21 +36,18 @@ alert("yup");
 
       <dl>
         <dt class="text-sm font-medium">Amount due</dt>
-        <dd class="mt-1 text-3xl font-bold tracking-tight text-white">$232.00</dd>
+        <dd class="mt-1 text-3xl font-bold tracking-tight text-white">${product.price}</dd>
       </dl>
 
       <ul role="list" class="divide-y divide-white divide-opacity-10 text-sm font-medium">
         <li class="flex items-start space-x-4 py-6">
           <img src="https://tailwindui.com/img/ecommerce-images/checkout-page-07-product-01.jpg" alt="Front of zip tote bag with white canvas, white handles, and black drawstring top." class="h-20 w-20 flex-none rounded-md object-cover object-center">
           <div class="flex-auto space-y-1">
-            <h3 class="text-white">High Wall Tote</h3>
-            <p>White and black</p>
-            <p>15L</p>
+            <h3 class="text-white">${product.title}</h3>
+            <p>${product.description}</p> 
           </div>
           <p class="flex-none text-base font-medium text-white">$210.00</p>
         </li>
-
-        <!-- More products... -->
       </ul>
 
       <dl class="space-y-6 border-t border-white border-opacity-10 pt-6 text-sm font-medium">
@@ -76,28 +93,9 @@ alert("yup");
         <div class="mt-10">
           <h3 id="payment-heading" class="text-lg font-medium text-gray-900">Payment details</h3>
 
-          <div class="mt-6 grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4">
-            <div class="col-span-3 sm:col-span-4">
-              <label for="card-number" class="block text-sm font-medium text-gray-700">Card number</label>
-              <div class="mt-1">
-                <input type="text" id="card-number" name="card-number" autocomplete="cc-number" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-              </div>
-            </div>
-
-            <div class="col-span-2 sm:col-span-3">
-              <label for="expiration-date" class="block text-sm font-medium text-gray-700">Expiration date (MM/YY)</label>
-              <div class="mt-1">
-                <input type="text" name="expiration-date" id="expiration-date" autocomplete="cc-exp" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-              </div>
-            </div>
-
-            <div>
-              <label for="cvc" class="block text-sm font-medium text-gray-700">CVC</label>
-              <div class="mt-1">
-                <input type="text" name="cvc" id="cvc" autocomplete="csc" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-              </div>
-            </div>
+          <div class="mt-6 grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4" id="payment-element">
           </div>
+            
         </div>
 
         <div class="mt-10">
@@ -151,4 +149,5 @@ alert("yup");
       </div>
     </form>
   </section>
-</div>`;
+</div>`
+}

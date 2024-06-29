@@ -1,6 +1,7 @@
 import en from './locale/en';
 import loadBlocks from './blocks';
 import loadCommands from './commands';
+import loadComponents from './components';
 import grapesjs from 'grapesjs';
 export default (editor, opts = {}) => {
   const options = {
@@ -15,9 +16,12 @@ export default (editor, opts = {}) => {
       openCategory: 'Blog',
     }, ...opts
   };
+ 
 
   // Add blocks
   loadBlocks(editor, options);
+  // Add components
+  loadComponents(editor, options);
   // Add commands
   loadCommands(editor, options);
   // Load i18n files
@@ -25,6 +29,7 @@ export default (editor, opts = {}) => {
     en,
     ...options.i18n,
   });
+
 
   const appendTailwindCss = async (frame) => {
     const iframe = frame.view.getEl();
@@ -57,4 +62,5 @@ export default (editor, opts = {}) => {
   editor.Canvas.getModel()['on']('change:frames', (m, frames) => {
     frames.forEach(frame => frame.once('loaded', () => appendTailwindCss(frame)));
   });
+  
 };
