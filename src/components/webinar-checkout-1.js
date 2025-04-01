@@ -1,29 +1,110 @@
-import Stripe from 'stripe';
+import { loadStripe } from '@stripe/stripe-js';
 
+// Helper function to format currency
+const formatPrice = (amount, currency) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD', // Default to USD if not provided
+  }).format(amount);
+};
 
-export default (product) => {
+export default async (product) => {
   console.log("product", product);
 
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // TODO: Replace with your actual Stripe publishable key
+  const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_PUBLISHABLE_KEY';
+  // TODO: Fetch the Payment Intent client secret from your server
+  // Example: const response = await fetch('/api/create-payment-intent', { method: 'POST', body: JSON.stringify({ productId: product.id }) });
+  // const { clientSecret } = await response.json();
+  const clientSecret = 'pi_123_secret_PLACEHOLDER'; // Replace with actual clientSecret
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+  if (!STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')) {
+    console.warn('Stripe publishable key is not set or is not a test key.');
+  }
+  if (clientSecret === 'pi_123_secret_PLACEHOLDER') {
+     console.warn('Stripe clientSecret is a placeholder. Fetch it from your server.');
+  }
 
-  // const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+  const stripe = await loadStripe(STRIPE_PUBLISHABLE_KEY);
 
-  // const appearance = { /* appearance */ };
-  // const options = { /* options */ };
-  // const elements = stripe.elements({ clientSecret, appearance });
-  // const paymentElement = elements.create('payment', options);
-  // paymentElement.mount('#payment-element');
+  if (!stripe) {
+    console.error("Stripe.js failed to load.");
+    return '<div>Error loading payment gateway.</div>';
+  }
 
+  const appearance = {
+    theme: 'stripe',
+     variables: {
+      colorPrimary: '#6366f1', // Indigo-600
+    }
+  };
+  const elements = stripe.elements({ clientSecret, appearance });
+  const paymentElement = elements.create('payment');
 
+  // We need to delay mounting until the element exists in the DOM
+  // This function will be called after the HTML is rendered
+  const mountPaymentElement = () => {
+    const paymentElementContainer = document.getElementById('payment-element');
+    if (paymentElementContainer) {
+      paymentElement.mount(paymentElementContainer);
+    } else {
+      console.error("Payment element container not found");
+    }
 
+    // Add form submission listener after mounting
+    const form = document.getElementById('payment-form');
+    const submitButton = document.getElementById('submit-button');
+    const errorMessage = document.getElementById('error-message');
+
+    if (form && submitButton && errorMessage) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        submitButton.disabled = true; // Disable button to prevent multiple submissions
+        errorMessage.textContent = ''; // Clear previous errors
+
+        const { error } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            // TODO: Update with your actual order confirmation page URL
+            return_url: window.location.origin + '/order-confirmation?product_id=' + product.id,
+            receipt_email: document.getElementById('email-address').value,
+          },
+        });
+
+        if (error) {
+          // This point will only be reached if there is an immediate error when
+          // confirming the payment. Otherwise, your customer will be redirected to
+          // your `return_url`. For some payment methods like iDEAL, your customer will
+          // be redirected to an intermediate site first to authorize the payment, then
+          // redirected to the `return_url`.
+          errorMessage.textContent = error.message || 'An unexpected error occurred.';
+          submitButton.disabled = false; // Re-enable button
+        } else {
+           // Redirect will happen automatically
+           errorMessage.textContent = 'Processing payment...';
+        }
+      });
+    } else {
+       console.error("Form, submit button, or error message element not found");
+    }
+  };
+
+  // Use the first image or a placeholder
+  const imageUrl = product.images && product.images.length > 0
+    ? product.images[0]
+    : 'https://tailwindui.com/img/ecommerce-images/checkout-page-07-product-01.jpg'; // Placeholder image
+
+  const formattedPrice = formatPrice(product.price, product.currency);
+
+  // Return the HTML structure
+  // Added IDs to form, submit button, and error message div
+  // Added a script to call mountPaymentElement after DOM is ready
   return `
 <!-- Background color split screen for large screens -->
 <div class="fixed left-0 top-0 hidden h-full w-1/2 bg-white lg:block" aria-hidden="true"></div>
 <div class="fixed right-0 top-0 hidden h-full w-1/2 bg-indigo-900 lg:block" aria-hidden="true"></div>
-
-<script>
-alert("yup");
-</script>
 
 <div class="relative mx-auto grid max-w-7xl grid-cols-1 gap-x-16 lg:grid-cols-2 lg:px-8">
   <h1 class="sr-only">Checkout</h1>
@@ -34,39 +115,25 @@ alert("yup");
 
       <dl>
         <dt class="text-sm font-medium">Amount due</dt>
-        <dd class="mt-1 text-3xl font-bold tracking-tight text-white">${product.price}</dd>
+        <dd class="mt-1 text-3xl font-bold tracking-tight text-white">${formattedPrice}</dd>
       </dl>
 
       <ul role="list" class="divide-y divide-white divide-opacity-10 text-sm font-medium">
         <li class="flex items-start space-x-4 py-6">
-          <img src="https://tailwindui.com/img/ecommerce-images/checkout-page-07-product-01.jpg" alt="Front of zip tote bag with white canvas, white handles, and black drawstring top." class="h-20 w-20 flex-none rounded-md object-cover object-center">
+          <img src="${imageUrl}" alt="${product.name || 'Product image'}" class="h-20 w-20 flex-none rounded-md object-cover object-center border border-gray-200">
           <div class="flex-auto space-y-1">
-            <h3 class="text-white">${product.title}</h3>
-            <p>${product.description}</p> 
+            <h3 class="text-white">${product.name || 'Product Name'}</h3>
+            <p>${product.description || 'Product Description'}</p>
           </div>
-          <p class="flex-none text-base font-medium text-white">$210.00</p>
+          <p class="flex-none text-base font-medium text-white">${formattedPrice}</p>
         </li>
       </ul>
 
       <dl class="space-y-6 border-t border-white border-opacity-10 pt-6 text-sm font-medium">
-        <div class="flex items-center justify-between">
-          <dt>Subtotal</dt>
-          <dd>$570.00</dd>
-        </div>
-
-        <div class="flex items-center justify-between">
-          <dt>Shipping</dt>
-          <dd>$25.00</dd>
-        </div>
-
-        <div class="flex items-center justify-between">
-          <dt>Taxes</dt>
-          <dd>$47.60</dd>
-        </div>
-
+         <!-- TODO: Subtotal, Shipping, Taxes should be calculated server-side or based on Payment Intent details -->
         <div class="flex items-center justify-between border-t border-white border-opacity-10 pt-6 text-white">
           <dt class="text-base">Total</dt>
-          <dd class="text-base">$642.60</dd>
+          <dd class="text-base">${formattedPrice}</dd>
         </div>
       </dl>
     </div>
@@ -75,7 +142,7 @@ alert("yup");
   <section aria-labelledby="payment-and-shipping-heading" class="py-16 lg:col-start-1 lg:row-start-1 lg:mx-auto lg:w-full lg:max-w-lg lg:pb-24 lg:pt-0">
     <h2 id="payment-and-shipping-heading" class="sr-only">Payment and shipping details</h2>
 
-    <form>
+    <form id="payment-form">
       <div class="mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0">
         <div>
           <h3 id="contact-info-heading" class="text-lg font-medium text-gray-900">Contact information</h3>
@@ -83,48 +150,48 @@ alert("yup");
           <div class="mt-6">
             <label for="email-address" class="block text-sm font-medium text-gray-700">Email address</label>
             <div class="mt-1">
-              <input type="email" id="email-address" name="email-address" autocomplete="email" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+              <input type="email" id="email-address" name="email-address" autocomplete="email" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
             </div>
           </div>
         </div>
 
         <div class="mt-10">
           <h3 id="payment-heading" class="text-lg font-medium text-gray-900">Payment details</h3>
-
-          <div class="mt-6 grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4" id="payment-element">
+          <p class="mt-1 text-sm text-gray-500">Enter your payment information below.</p>
+          <div class="mt-6" id="payment-element">
+            <!-- Stripe Payment Element will be inserted here -->
           </div>
-            
         </div>
 
         <div class="mt-10">
           <h3 id="shipping-heading" class="text-lg font-medium text-gray-900">Shipping address</h3>
-
+           <p class="mt-1 text-sm text-gray-500">Enter the address where you'd like to receive your order.</p>
           <div class="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
             <div class="sm:col-span-3">
               <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
               <div class="mt-1">
-                <input type="text" id="address" name="address" autocomplete="street-address" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <input type="text" id="address" name="address" autocomplete="street-address" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
               </div>
             </div>
 
             <div>
               <label for="city" class="block text-sm font-medium text-gray-700">City</label>
               <div class="mt-1">
-                <input type="text" id="city" name="city" autocomplete="address-level2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <input type="text" id="city" name="city" autocomplete="address-level2" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
               </div>
             </div>
 
             <div>
               <label for="region" class="block text-sm font-medium text-gray-700">State / Province</label>
               <div class="mt-1">
-                <input type="text" id="region" name="region" autocomplete="address-level1" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <input type="text" id="region" name="region" autocomplete="address-level1" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
               </div>
             </div>
 
             <div>
               <label for="postal-code" class="block text-sm font-medium text-gray-700">Postal code</label>
               <div class="mt-1">
-                <input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
               </div>
             </div>
           </div>
@@ -142,10 +209,20 @@ alert("yup");
         </div>
 
         <div class="mt-10 flex justify-end border-t border-gray-200 pt-6">
-          <button type="submit" class="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50">Pay now</button>
+          <button type="submit" id="submit-button" class="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 disabled:opacity-50">Pay ${formattedPrice}</button>
         </div>
+        <div id="error-message" class="mt-4 text-sm text-red-600 text-right"></div>
       </div>
     </form>
   </section>
-</div>`
-}
+</div>
+<script>
+  // Ensure the DOM is ready before mounting the Payment Element
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountPaymentElement);
+  } else {
+    mountPaymentElement();
+  }
+</script>
+`;
+};
