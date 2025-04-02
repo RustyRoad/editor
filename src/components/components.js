@@ -1,202 +1,114 @@
 import webinarCheckout1 from "./webinar-checkout-1";
-// Assuming loadStripe is needed within the script property now
 import { loadStripe } from '@stripe/stripe-js';
+
+// Helper function defined within the main export scope
+const formatPrice = (amount, currency) => {
+  const numAmount = Number(amount);
+  if (isNaN(numAmount)) {
+    return 'N/A';
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD',
+  }).format(numAmount);
+};
 
 export default (editor, opts = {}) => {
   const domc = editor.DomComponents;
+  const componentType = 'Checkout 2 Step';
 
-  domc.addType('Checkout 2 Step', {
-    // isComponent remains the same
+  domc.addType(componentType, {
     isComponent: el => {
-      // Example: Check for a specific attribute or class
       if (el.getAttribute && el.getAttribute('data-gjs-type') === 'webinar-checkout-2') {
-        return { type: 'Checkout 2 Step' }; // Match the type name
+        return { type: componentType };
       }
     },
     model: {
       defaults: {
         tagName: 'div',
-        attributes: { 'data-gjs-type': 'webinar-checkout-2' }, // Keep attribute for identification
-        content: 'Select this component and click the gear icon to select a product.',
-        // Keep traits for product selection
+        attributes: { 'data-gjs-type': 'webinar-checkout-2' },
+        content: 'Select a product...', // Initial placeholder
+        droppable: false,
+        // Define properties that trigger re-render/script execution when changed
+        // We'll listen to these changes in the view
+        stylable: [], // Add relevant style props if needed
+        // Remove script property, logic moves to view
         traits: [
           {
             type: 'select',
             label: 'Select Product',
-            name: 'selectedProduct',
-            options: [], // Will be populated by fetchProducts
-            changeProp: 1
+            name: 'selectedProduct', // Trait name stores the ID
+            options: [],
+            changeProp: 1 // Trigger model change on trait selection
           }
         ],
-        // Add properties to store script data temporarily if needed, though script context might suffice
-        // checkoutScriptData: null, // Example if needed, but prefer script context
-        // Add 'script' property from GrapesJS API
-        script: function() {
-          // 'this' here refers to the component view instance
-          // 'this.model' refers to the component model instance
-          const componentRootEl = this.el;
-          const model = this.model;
-
-          // Get necessary data from the model
-          const stripeKey = model.get('stripeKey');
-          const selectedProductId = model.get('selectedProduct');
-          const products = model.get('products') || [];
-          const selectedProduct = products.find(p => p.id.toString() === selectedProductId);
-
-          // Debounce or ensure this runs only once after rendering if needed
-          // Use a flag on the element itself
-          if (!componentRootEl || componentRootEl.dataset.stripeScriptInitialized || !stripeKey || !selectedProduct) {
-            if (!stripeKey) console.log('[Checkout Script] Stripe key not available yet.');
-            if (!selectedProduct) console.log('[Checkout Script] Product not selected or found yet.');
-            return; // Exit if already run, or required data is missing
-          }
-          componentRootEl.dataset.stripeScriptInitialized = 'true';
-          console.log('[Checkout Script] Initializing for Product ID:', selectedProductId);
-
-          // All Stripe logic goes here, executed in the browser context
-          (async () => {
-            try {
-              const stripe = await loadStripe(stripeKey);
-              if (!stripe) {
-                console.error("[Checkout Script] Stripe.js failed to load.");
-                componentRootEl.innerHTML = '<div>Error loading payment gateway.</div>'; // Update component content on error
-                return;
-              }
-
-              const appearance = { theme: 'stripe', variables: { colorPrimary: '#6366f1' } };
-              let elementsOptions = {};
-              const productPrice = selectedProduct.price; // Get price from selected product
-              const productId = selectedProduct.id;
-
-              if (productPrice > 0) {
-                elementsOptions = { mode: 'payment', currency: (selectedProduct.currency || 'usd').toLowerCase(), amount: Math.round(productPrice * 100), appearance };
-              } else {
-                elementsOptions = { mode: 'setup', currency: (selectedProduct.currency || 'usd').toLowerCase(), appearance };
-              }
-              console.log("[Checkout Script] Initializing Stripe Elements with options:", elementsOptions);
-
-              const elements = stripe.elements(elementsOptions);
-              const paymentElement = elements.create('payment');
-
-              const paymentElementContainer = componentRootEl.querySelector('#payment-element');
-              if (paymentElementContainer) {
-                console.log('[Checkout Script] Mounting Payment Element...');
-                paymentElement.mount(paymentElementContainer);
-                console.log('[Checkout Script] Payment Element mount attempted.');
-              } else {
-                console.error("[Checkout Script] Error: #payment-element container not found!");
-              }
-
-              // Setup form submission
-              const form = componentRootEl.querySelector('#payment-form');
-              const submitButton = componentRootEl.querySelector('#submit-button');
-              const errorMessage = componentRootEl.querySelector('#error-message');
-
-              if (form && submitButton && errorMessage) {
-                 console.log('[Checkout Script] Adding submit listener.');
-                 // Remove previous listener if script runs multiple times (though flag should prevent)
-                 // form.removeEventListener('submit', handleSubmit); // Need named function or store handler
-                 const handleSubmit = async (e) => {
-                    e.preventDefault();
-                    submitButton.disabled = true;
-                    errorMessage.textContent = '';
-
-                    if (productPrice <= 0) {
-                      console.log("[Checkout Script] Processing free order...");
-                      errorMessage.textContent = 'Processing your free order...';
-                      window.location.href = window.location.origin + '/order-confirmation?product_id=' + productId + '&free=true';
-                    } else {
-                      try {
-                        console.log('[Checkout Script] Submitting paid order. Fetching client secret...');
-                        const res = await fetch('/api/create-payment-intent', { // Relative path
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ productId: productId, amount: productPrice })
-                        });
-                        // Check for network errors first
-                        if (!res.ok) {
-                           throw new Error(`API Error: ${res.status} ${res.statusText}`);
-                        }
-                        const { clientSecret, error: backendError } = await res.json();
-
-                        if (backendError || !clientSecret) {
-                          throw new Error(backendError || 'Failed to create Payment Intent on submit.');
-                        }
-                        console.log('[Checkout Script] Client secret fetched. Confirming payment...');
-
-                        const { error } = await stripe.confirmPayment({
-                          elements: elements,
-                          clientSecret: clientSecret,
-                          confirmParams: {
-                            return_url: window.location.origin + '/order-confirmation?product_id=' + productId,
-                            receipt_email: componentRootEl.querySelector('#email-address').value,
-                          },
-                        });
-                        if (error) throw error;
-                        errorMessage.textContent = 'Processing payment...'; // Redirect should happen
-                      } catch (error) {
-                        console.error("[Checkout Script] Payment processing error:", error);
-                        errorMessage.textContent = error.message || 'An unexpected error occurred.';
-                        submitButton.disabled = false;
-                      }
-                    }
-                 };
-                 // Store handler reference if needed for removal later
-                 // componentRootEl.stripeSubmitHandler = handleSubmit;
-                 form.addEventListener('submit', handleSubmit);
-              } else {
-                 console.error("[Checkout Script] Error: Form elements not found for listener setup!");
-              }
-
-            } catch (error) {
-              console.error("[Checkout Script] General Stripe setup error:", error);
-              if(componentRootEl) componentRootEl.innerHTML = '<div>Error initializing payment form.</div>';
-            }
-          })(); // Immediately invoke the async function
-        },
+        // Internal model properties (not traits)
+        stripeKey: null,
+        products: [],
         title: 'Webinar Checkout 1' // Keep title if needed
       },
-      // init, fetchStripeKey, fetchProducts, updateTraits remain largely the same
       init() {
-        this.listenTo(this, 'change:selectedProduct', this.updateContent);
-        // Add listener to re-run script when component content changes (e.g., after updateContent)
-        this.listenTo(this, 'change:components', this.runScript);
+        // Listen for product selection change to update content via view's render
+        this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
+        // Listen for stripeKey change
+        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
+        // Listen for products change
+         this.listenTo(this, 'change:products', this.handleDataChange);
+
         this.fetchStripeKey();
         this.fetchProducts();
       },
-      // Added helper to trigger script execution, called by change:components listener
-      runScript() {
-        // GrapesJS might automatically call the script function on component changes.
-        // If not, this explicitly calls it. Check GrapesJS docs for best practice.
-        // This might cause multiple executions if not handled carefully by the script itself (using the data-stripe-script-executed flag).
-        if (typeof this.view.script === 'function') {
-           console.log("[Components Model] Triggering script execution due to component change.");
-           // Reset execution flag before running script again
-           if(this.view.el) this.view.el.removeAttribute('data-stripe-script-executed');
-           this.view.script();
-        }
+      // Triggered when selectedProduct trait changes
+      handleProductChange() {
+         console.log('[Model] Product selection changed:', this.get('selectedProduct'));
+         // No need to call updateContent directly, view's onRender will handle it
+         // Force a re-render if GrapesJS doesn't do it automatically on trait change
+         this.trigger('rerender'); // Custom event, or use built-in if available
+      },
+       // Triggered when stripeKey or products change
+      handleDataChange() {
+         console.log('[Model] Stripe key or products updated.');
+         // Force a re-render if a product is already selected
+         if (this.get('selectedProduct')) {
+            this.trigger('rerender');
+         }
       },
       fetchStripeKey() {
-        const token = localStorage.getItem("access_token");
-        fetch('/api/stripe/key', { /* ... headers ... */ })
+        console.log('[Components Model] Fetching Stripe key...');
+      //  let token = "";
+        // Use user's preferred localhost URL
+        // ex response {"public_key":"pk_test_fQMbieMo9lIO0XOD3Os9VXE8"}
+        fetch('/api/stripe/key', {
+             method: 'GET',
+             headers: {
+               "Content-Type": "application/json",
+              // "Authorization": "Bearer " + token,
+         
+              }
+              
+            })
           .then(response => response.json())
           .then(data => {
+            console.log('[Components Model] Stripe key response:', data);
             if (data && data.public_key) {
-              this.set('stripeKey', data.public_key);
               console.log('[Components Model] Stripe key fetched.');
-              // Potentially trigger updateContent if product already selected
-              if (this.get('selectedProduct')) this.updateContent();
+              this.set('stripeKey', data.public_key); // Triggers change:stripeKey
             } else {
-               console.error('[Components Model] Failed to fetch valid Stripe key.');
+               console.error('[Components Model] Failed to fetch valid Stripe key data:', data);
+               this.set('stripeKey', null);
             }
-          }).catch(err => console.error('[Components Model] Error fetching Stripe key:', err));
+          }).catch(err => {
+              console.error('[Components Model] Error fetching Stripe key:', err);
+              this.set('stripeKey', null);
+          });
       },
       fetchProducts() {
         console.log('[Components Model] Fetching products...');
+         // Use user's preferred localhost URL
         fetch('/api/products')
           .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch products');
-            return response.json();
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+             return response.text().then(text => text ? JSON.parse(text) : []);
           })
           .then(data => {
             if (!Array.isArray(data)) {
@@ -204,71 +116,214 @@ export default (editor, opts = {}) => {
               throw new Error('Invalid products data format');
             }
             const products = data.map(product => ({
-              id: product.id || 0,
+              id: product.id || Date.now() + Math.random(),
               title: product.name || 'Untitled Product',
               price: Math.max(0, Number(product.price)) || 0,
               description: product.description || '',
-              images: product.images || []
+              images: product.images || [],
+              currency: product.currency
             }));
             console.log('[Components Model] Fetched products:', products);
-            this.set('products', products);
+            this.set('products', products); // Triggers change:products
             this.updateTraits();
-            // Potentially trigger updateContent if product already selected
-            if (this.get('selectedProduct')) this.updateContent();
           }).catch(error => {
             console.error('[Components Model] Product fetch error:', error);
+             this.set('products', []);
+             this.updateTraits(); // Update traits even on error (to show empty list)
           });
       },
       updateTraits() {
         const products = this.get('products') || [];
         const trait = this.getTrait('selectedProduct');
-        if (trait) { // Check if trait exists
-            trait.set('options', products.map(product => ({
-              id: product.id, // Use id for internal value
-              name: product.title, // Use name for display
-              value: product.id.toString() // Ensure value is string if needed by select trait
-            })));
-             // Force trait update if necessary, check GrapesJS docs
-             this.em.trigger('component:toggled'); // Example way to force UI refresh
+        if (trait) {
+            const currentVal = this.get('selectedProduct');
+            const options = products.map(product => ({
+              id: product.id.toString(),
+              name: `${product.title} (${formatPrice(product.price, product.currency)})`,
+              value: product.id.toString()
+            }));
+            options.unshift({ id: '', name: 'Select a Product...', value: '' });
+            trait.set('options', options);
+            // GrapesJS should handle setting the value based on the model attribute
+            // if (!products.some(p => p.id.toString() === currentVal)) {
+            //      trait.set('value', ''); // Let GrapesJS handle default/current value
+            // }
         } else {
              console.error("[Components Model] 'selectedProduct' trait not found.");
         }
       },
-      // updateContent now only generates HTML and triggers the script execution via change:components listener
-      async updateContent() {
-        const stripeKey = this.get('stripeKey');
-        const selectedProductId = this.get('selectedProduct');
-        const products = this.get('products') || [];
+      // Removed updateContent - logic moved to view.onRender
+    }, // End model
 
-        if (!stripeKey) {
-           console.warn("[Components Model] updateContent called before Stripe key fetched.");
-           // Optionally show a message or wait
-           return;
-        }
+    view: {
+      // Listen to model changes that require re-rendering or script execution
+      init() {
+        this.listenTo(this.model, 'change:selectedProduct change:stripeKey change:products rerender', this.render);
+      },
+
+      onRender() {
+        console.log('[View] onRender triggered.');
+        const model = this.model;
+        const componentRootEl = this.el;
+
+        // --- Get data ---
+        const stripeKey = model.get('stripeKey');
+        const selectedProductId = model.get('selectedProduct');
+        const products = model.get('products') || [];
+        const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
+
+        // --- Generate HTML ---
+        let htmlContent;
         if (!selectedProductId) {
-           this.components('Please select a product from the settings panel.');
-           return;
+          htmlContent = 'Please select a product from the settings panel.';
+        } else if (!selectedProduct) {
+          htmlContent = '<div class="text-red-600">Selected product data not found. Please re-select.</div>';
+        } else {
+          htmlContent = webinarCheckout1(selectedProduct); // Call template function
         }
-        if (!products.length) {
-          return this.components('<div class="text-red-600">No products available</div>');
+        // Set inner HTML - this should happen before trying to mount Stripe
+        componentRootEl.innerHTML = htmlContent;
+
+        // --- Check prerequisites for Stripe ---
+        const initFlag = `stripeRendered_${selectedProductId || 'none'}`;
+        if (componentRootEl.dataset[initFlag]) {
+           console.log(`[View] Stripe already rendered for product ${selectedProductId}.`);
+           return; // Already initialized for this product in this view instance
         }
+         if (!stripeKey || !selectedProduct) {
+           console.log('[View] Skipping Stripe initialization: Missing key or product.');
+           return; // Not ready for Stripe yet
+         }
 
-        const selectedProduct = products.find(product => product.id.toString() === selectedProductId);
-        if (!selectedProduct) {
-          return this.components('<div class="text-red-600">Selected product not found</div>');
-        }
+        // Mark as initialized for this product render cycle
+         Object.keys(componentRootEl.dataset).forEach(key => {
+             if (key.startsWith('stripeRendered_')) delete componentRootEl.dataset[key];
+         });
+        componentRootEl.dataset[initFlag] = 'true';
+        console.log('[View] Initializing Stripe in onRender for Product ID:', selectedProductId);
 
-        // Call the simplified template function (now synchronous)
-        // Pass only product data needed for the template
-        const htmlContent = webinarCheckout1(selectedProduct);
+        // --- Helper to display errors ---
+        const displayError = (message) => {
+          const errorMessageDiv = componentRootEl.querySelector('#error-message');
+          if (errorMessageDiv) errorMessageDiv.textContent = message;
+          const submitButton = componentRootEl.querySelector('#submit-button');
+          if(submitButton) submitButton.disabled = false;
+        };
 
-        // Set the HTML content - this triggers 'change:components' which calls runScript -> script()
-        console.log("[Components Model] Setting HTML content, expecting script to run.");
-        // Reset execution flag before setting components to allow script to run again
-        if(this.view && this.view.el) this.view.el.removeAttribute('data-stripe-script-executed');
-        this.components(htmlContent);
-      }
-    }
-    // View is implicitly handled by GrapesJS, including calling the 'script' function
-  });
-};
+        // --- Stripe Initialization and Mounting (Async IIFE) ---
+        (async () => {
+          let stripeInstance, elementsInstance, paymentElementInstance; // Keep scope local
+          try {
+            console.log('[View onRender] Loading Stripe...');
+            stripeInstance = await loadStripe(stripeKey);
+            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
+            console.log('[View onRender] Stripe loaded.');
+
+            const appearance = { theme: 'stripe', variables: { colorPrimary: '#6366f1' } };
+            let elementsOptions = {};
+            const productPrice = selectedProduct.price;
+            const productId = selectedProduct.id;
+
+            if (productPrice > 0) {
+              elementsOptions = { mode: 'payment', currency: (selectedProduct.currency || 'usd').toLowerCase(), amount: Math.round(productPrice * 100), appearance };
+            } else {
+              elementsOptions = { mode: 'setup', currency: (selectedProduct.currency || 'usd').toLowerCase(), appearance };
+            }
+            console.log("[View onRender] Initializing Stripe Elements:", elementsOptions);
+
+            elementsInstance = stripeInstance.elements(elementsOptions);
+            paymentElementInstance = elementsInstance.create('payment');
+            console.log("[View onRender] Payment Element created.");
+
+            const paymentElementContainer = componentRootEl.querySelector('#payment-element');
+            if (paymentElementContainer) {
+              paymentElementContainer.innerHTML = ''; // Clear previous just in case
+              console.log('[View onRender] Mounting Payment Element...');
+              paymentElementInstance.mount(paymentElementContainer);
+              console.log('[View onRender] Payment Element mount attempted.');
+            } else {
+               console.error("[View onRender] Error: #payment-element container not found!");
+               displayError("Payment form container missing.");
+            }
+
+            // --- Setup Form Submission ---
+            const form = componentRootEl.querySelector('#payment-form');
+            const submitButton = componentRootEl.querySelector('#submit-button');
+
+            if (form && submitButton) {
+               console.log('[View onRender] Adding submit listener.');
+               const errorMessageDiv = componentRootEl.querySelector('#error-message');
+
+               // Remove previous listener if exists (using stored handler on element)
+               if (componentRootEl.stripeSubmitHandler) {
+                  form.removeEventListener('submit', componentRootEl.stripeSubmitHandler);
+               }
+
+               const handleSubmit = async (e) => {
+                  e.preventDefault();
+                  submitButton.disabled = true;
+                  if(errorMessageDiv) errorMessageDiv.textContent = '';
+
+                  if (productPrice <= 0) {
+                    console.log("[View onRender] Processing free order...");
+                    if(errorMessageDiv) errorMessageDiv.textContent = 'Processing your free order...';
+                    setTimeout(() => window.location.href = window.location.origin + '/order-confirmation?product_id=' + productId + '&free=true', 500);
+                  } else {
+                    let clientSecret;
+                    try {
+                      console.log('[View onRender] Submitting paid order. Fetching client secret...');
+                      // Use user's preferred localhost URL
+                      const res = await fetch('/api/create-payment-intent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ productId: productId, amount: productPrice })
+                      });
+                      if (!res.ok) {
+                         let errorMsg = `API Error: ${res.status} ${res.statusText}`;
+                         try { const errBody = await res.json(); errorMsg = errBody.error || errorMsg; } catch (_) {}
+                         throw new Error(errorMsg);
+                      }
+                      const { clientSecret: fetchedSecret, error: backendError } = await res.json();
+
+                      if (backendError || !fetchedSecret) {
+                        throw new Error(backendError || 'Failed to create Payment Intent on submit.');
+                      }
+                      clientSecret = fetchedSecret;
+                      console.log('[View onRender] Client secret fetched. Confirming payment...');
+
+                      const emailInput = componentRootEl.querySelector('#email-address');
+                      const email = emailInput ? emailInput.value : '';
+
+                      const { error } = await stripeInstance.confirmPayment({
+                        elements: elementsInstance,
+                        clientSecret: clientSecret,
+                        confirmParams: {
+                          return_url: window.location.origin + '/order-confirmation?product_id=' + productId,
+                          receipt_email: email,
+                        },
+                      });
+                      if (error) throw error;
+                      if(errorMessageDiv) errorMessageDiv.textContent = 'Processing payment...';
+                    } catch (error) {
+                      console.error("[View onRender] Payment processing error:", error);
+                      displayError(error.message || 'An unexpected error occurred.');
+                    }
+                  }
+               };
+               componentRootEl.stripeSubmitHandler = handleSubmit; // Store handler reference
+               form.addEventListener('submit', handleSubmit);
+            } else {
+               console.error("[View onRender] Error: Form or submit button not found!");
+               displayError("Checkout form elements missing.");
+            }
+
+          } catch (error) {
+            console.error("[View onRender] General Stripe setup error:", error);
+            displayError(`Error initializing payment form: ${error.message}`);
+            delete componentRootEl.dataset[initFlag]; // Allow retry on error
+          }
+        })(); // Immediately invoke the async function
+      } // End onRender
+    } // End view
+  }); // End addType
+}; // End export

@@ -6,9 +6,9 @@ const formatPrice = (amount, currency) => {
   }).format(amount);
 };
 
-export default (product = {}) => { // Make synchronous, remove stripeKey/async
+export default (product = {}) => { // Synchronous, only needs product data
   // Basic validation
-  if (!product.id || typeof product.price === 'undefined' || !product.title) { // Basic product info needed
+  if (!product.id || typeof product.price === 'undefined' || !product.title) {
     console.error("[HTML Template] Invalid product data", {product});
     return '<div class="text-red-600">Error: Missing required product information</div>';
   }
@@ -145,4 +145,5 @@ export default (product = {}) => { // Make synchronous, remove stripeKey/async
     </form>
   </section>
 </div>
-`};
+`;
+};
