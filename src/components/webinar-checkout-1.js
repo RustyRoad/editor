@@ -8,23 +8,22 @@ const formatPrice = (amount, currency) => {
   }).format(amount);
 };
 
-export default async (product) => {
+export default async (product = {}, stripeKey = '') => { // Remove isEditorMode parameter
+  // Basic validation
+  if (!product.id || typeof product.price === 'undefined' || !product.title || !stripeKey) { // Keep stripeKey required
+    console.error("Invalid data (product ID, price, title, or stripeKey missing)", {product, stripeKey});
+    return '<div class="text-red-600">Error: Missing required product information</div>';
+  }
+
   console.log("product", product);
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // TODO: Replace with your actual Stripe publishable key
-  const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_PUBLISHABLE_KEY';
-  // TODO: Fetch the Payment Intent client secret from your server
-  // Example: const response = await fetch('/api/create-payment-intent', { method: 'POST', body: JSON.stringify({ productId: product.id }) });
-  // const { clientSecret } = await response.json();
-  const clientSecret = 'pi_123_secret_PLACEHOLDER'; // Replace with actual clientSecret
+  const STRIPE_PUBLISHABLE_KEY = stripeKey;
+  // Client secret will be fetched on submit for paid products
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   if (!STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')) {
     console.warn('Stripe publishable key is not set or is not a test key.');
-  }
-  if (clientSecret === 'pi_123_secret_PLACEHOLDER') {
-     console.warn('Stripe clientSecret is a placeholder. Fetch it from your server.');
   }
 
   const stripe = await loadStripe(STRIPE_PUBLISHABLE_KEY);
@@ -40,68 +39,53 @@ export default async (product) => {
       colorPrimary: '#6366f1', // Indigo-600
     }
   };
-  const elements = stripe.elements({ clientSecret, appearance });
+
+  // Determine Elements initialization options
+  let elementsOptions = {};
+  if (product.price > 0) {
+    // Initialize for payment without clientSecret initially
+    elementsOptions = { mode: 'payment', currency: (product.currency || 'usd').toLowerCase(), amount: Math.round(product.price * 100), appearance }; // Amount in cents
+  } else {
+    // Initialize for setup for free products
+    elementsOptions = { mode: 'setup', currency: (product.currency || 'usd').toLowerCase(), appearance };
+  }
+  console.log("Initializing Stripe Elements with options:", elementsOptions);
+  const elements = stripe.elements(elementsOptions);
   const paymentElement = elements.create('payment');
 
-  // We need to delay mounting until the element exists in the DOM
-  // This function will be called after the HTML is rendered
-  const mountPaymentElement = () => {
-    const paymentElementContainer = document.getElementById('payment-element');
-    if (paymentElementContainer) {
-      paymentElement.mount(paymentElementContainer);
-    } else {
-      console.error("Payment element container not found");
-    }
-
-    // Add form submission listener after mounting
-    const form = document.getElementById('payment-form');
-    const submitButton = document.getElementById('submit-button');
-    const errorMessage = document.getElementById('error-message');
-
-    if (form && submitButton && errorMessage) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        submitButton.disabled = true; // Disable button to prevent multiple submissions
-        errorMessage.textContent = ''; // Clear previous errors
-
-        const { error } = await stripe.confirmPayment({
-          elements,
-          confirmParams: {
-            // TODO: Update with your actual order confirmation page URL
-            return_url: window.location.origin + '/order-confirmation?product_id=' + product.id,
-            receipt_email: document.getElementById('email-address').value,
-          },
-        });
-
-        if (error) {
-          // This point will only be reached if there is an immediate error when
-          // confirming the payment. Otherwise, your customer will be redirected to
-          // your `return_url`. For some payment methods like iDEAL, your customer will
-          // be redirected to an intermediate site first to authorize the payment, then
-          // redirected to the `return_url`.
-          errorMessage.textContent = error.message || 'An unexpected error occurred.';
-          submitButton.disabled = false; // Re-enable button
-        } else {
-           // Redirect will happen automatically
-           errorMessage.textContent = 'Processing payment...';
-        }
-      });
-    } else {
-       console.error("Form, submit button, or error message element not found");
-    }
-  };
-
   // Use the first image or a placeholder
-  const imageUrl = product.images && product.images.length > 0
-    ? product.images[0]
-    : 'https://tailwindui.com/img/ecommerce-images/checkout-page-07-product-01.jpg'; // Placeholder image
+  let imageUrl = 'https://tailwindui.com/img/ecommerce-images/checkout-page-07-product-01.jpg'; // Default placeholder
+  if (product.images && product.images.length > 0 && typeof product.images[0] === 'string') {
+    const firstImage = product.images[0];
+    // Basic check if it looks like a URL
+    if (firstImage.startsWith('http') || firstImage.startsWith('/') ) {
+      imageUrl = firstImage;
+    }
+  }
 
   const formattedPrice = formatPrice(product.price, product.currency);
+
+   // Determine button text based on price
+   const buttonText = product.price > 0 ? `Pay ${formattedPrice}` : 'Get Access';
+
+  // --- HACK: Store instances and data globally for components.js ---
+  // Use a unique key, e.g., based on product ID if available, otherwise a fallback
+  const uniqueKey = `stripeCheckout_${product.id || Date.now()}`;
+  window[uniqueKey] = {
+    stripeInstance: stripe,
+    paymentElementInstance: paymentElement,
+    elementsInstance: elements, // Pass elements too
+    productPrice: product.price,
+    productId: product.id
+    // No need to pass clientSecret or isEditorMode anymore
+  };
+  console.log(`[Checkout Component] Stored data globally under key: ${uniqueKey}, Product ID: ${product.id}`);
+  // --- End HACK ---
 
   // Return the HTML structure
   // Added IDs to form, submit button, and error message div
   // Added a script to call mountPaymentElement after DOM is ready
-  return `
+  return `<meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Background color split screen for large screens -->
 <div class="fixed left-0 top-0 hidden h-full w-1/2 bg-white lg:block" aria-hidden="true"></div>
 <div class="fixed right-0 top-0 hidden h-full w-1/2 bg-indigo-900 lg:block" aria-hidden="true"></div>
@@ -209,20 +193,12 @@ export default async (product) => {
         </div>
 
         <div class="mt-10 flex justify-end border-t border-gray-200 pt-6">
-          <button type="submit" id="submit-button" class="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 disabled:opacity-50">Pay ${formattedPrice}</button>
+          <button type="submit" id="submit-button" class="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 disabled:opacity-50">${buttonText}</button>
         </div>
         <div id="error-message" class="mt-4 text-sm text-red-600 text-right"></div>
       </div>
     </form>
   </section>
 </div>
-<script>
-  // Ensure the DOM is ready before mounting the Payment Element
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mountPaymentElement);
-  } else {
-    mountPaymentElement();
-  }
-</script>
 `;
 };
