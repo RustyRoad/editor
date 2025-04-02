@@ -1,5 +1,3 @@
-import { loadStripe } from '@stripe/stripe-js';
-
 // Helper function to format currency
 const formatPrice = (amount, currency) => {
   return new Intl.NumberFormat('en-US', {
@@ -8,50 +6,12 @@ const formatPrice = (amount, currency) => {
   }).format(amount);
 };
 
-export default async (product = {}, stripeKey = '') => { // Remove isEditorMode parameter
+export default (product = {}) => { // Make synchronous, remove stripeKey/async
   // Basic validation
-  if (!product.id || typeof product.price === 'undefined' || !product.title || !stripeKey) { // Keep stripeKey required
-    console.error("Invalid data (product ID, price, title, or stripeKey missing)", {product, stripeKey});
+  if (!product.id || typeof product.price === 'undefined' || !product.title) { // Basic product info needed
+    console.error("[HTML Template] Invalid product data", {product});
     return '<div class="text-red-600">Error: Missing required product information</div>';
   }
-
-  console.log("product", product);
-
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  const STRIPE_PUBLISHABLE_KEY = stripeKey;
-  // Client secret will be fetched on submit for paid products
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-  if (!STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')) {
-    console.warn('Stripe publishable key is not set or is not a test key.');
-  }
-
-  const stripe = await loadStripe(STRIPE_PUBLISHABLE_KEY);
-
-  if (!stripe) {
-    console.error("Stripe.js failed to load.");
-    return '<div>Error loading payment gateway.</div>';
-  }
-
-  const appearance = {
-    theme: 'stripe',
-     variables: {
-      colorPrimary: '#6366f1', // Indigo-600
-    }
-  };
-
-  // Determine Elements initialization options
-  let elementsOptions = {};
-  if (product.price > 0) {
-    // Initialize for payment without clientSecret initially
-    elementsOptions = { mode: 'payment', currency: (product.currency || 'usd').toLowerCase(), amount: Math.round(product.price * 100), appearance }; // Amount in cents
-  } else {
-    // Initialize for setup for free products
-    elementsOptions = { mode: 'setup', currency: (product.currency || 'usd').toLowerCase(), appearance };
-  }
-  console.log("Initializing Stripe Elements with options:", elementsOptions);
-  const elements = stripe.elements(elementsOptions);
-  const paymentElement = elements.create('payment');
 
   // Use the first image or a placeholder
   let imageUrl = 'https://tailwindui.com/img/ecommerce-images/checkout-page-07-product-01.jpg'; // Default placeholder
@@ -68,23 +28,8 @@ export default async (product = {}, stripeKey = '') => { // Remove isEditorMode 
    // Determine button text based on price
    const buttonText = product.price > 0 ? `Pay ${formattedPrice}` : 'Get Access';
 
-  // --- HACK: Store instances and data globally for components.js ---
-  // Use a unique key, e.g., based on product ID if available, otherwise a fallback
-  const uniqueKey = `stripeCheckout_${product.id || Date.now()}`;
-  window[uniqueKey] = {
-    stripeInstance: stripe,
-    paymentElementInstance: paymentElement,
-    elementsInstance: elements, // Pass elements too
-    productPrice: product.price,
-    productId: product.id
-    // No need to pass clientSecret or isEditorMode anymore
-  };
-  console.log(`[Checkout Component] Stored data globally under key: ${uniqueKey}, Product ID: ${product.id}`);
-  // --- End HACK ---
-
   // Return the HTML structure
-  // Added IDs to form, submit button, and error message div
-  // Added a script to call mountPaymentElement after DOM is ready
+  // Note: IDs for payment-element, payment-form, submit-button, error-message are crucial for the script in components.js
   return `<meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Background color split screen for large screens -->
 <div class="fixed left-0 top-0 hidden h-full w-1/2 bg-white lg:block" aria-hidden="true"></div>
@@ -200,5 +145,4 @@ export default async (product = {}, stripeKey = '') => { // Remove isEditorMode 
     </form>
   </section>
 </div>
-`;
-};
+`};
