@@ -1,4 +1,5 @@
 import webinarCheckout1 from "./webinar-checkout-1";
+import embeddedCheckout from "./embedded-checkout";
 import { loadStripe } from '@stripe/stripe-js';
 
 // Helper function defined within the main export scope
@@ -19,7 +20,7 @@ export default (editor, opts = {}) => {
 
   domc.addType(componentType, {
     isComponent: el => {
-      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'webinar-checkout-2') {
+      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'webinar-checkout-1') {
         return { type: componentType };
       }
     },
@@ -326,4 +327,148 @@ export default (editor, opts = {}) => {
       } // End onRender
     } // End view
   }); // End addType
+
+  // Add Embedded Checkout component type
+  domc.addType('Embedded Checkout', {
+    isComponent: el => {
+      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'embedded-checkout') {
+        return { type: 'Embedded Checkout' };
+      }
+    },
+    model: {
+      defaults: {
+        tagName: 'div',
+        attributes: { 'data-gjs-type': 'embedded-checkout' },
+        content: 'Select a product for embedded checkout...',
+        droppable: false,
+        stylable: [],
+        traits: [
+          {
+            type: 'select',
+            label: 'Select Product',
+            name: 'selectedProduct',
+            options: [],
+            changeProp: 1
+          }
+        ],
+        stripeKey: null,
+        products: [],
+        title: 'Embedded Checkout'
+      },
+      init() {
+        this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
+        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
+        this.listenTo(this, 'change:products', this.handleDataChange);
+
+        this.fetchStripeKey();
+        this.fetchProducts();
+      },
+      handleProductChange() {
+        console.log('[Embedded Model] Product selection changed:', this.get('selectedProduct'));
+        this.trigger('rerender');
+      },
+      handleDataChange() {
+        console.log('[Embedded Model] Stripe key or products updated.');
+        if (this.get('selectedProduct')) {
+          this.trigger('rerender');
+        }
+      },
+      fetchStripeKey() {
+        fetch('/api/stripe/key')
+          .then(response => response.json())
+          .then(data => {
+            if (data && data.public_key) {
+              this.set('stripeKey', data.public_key);
+            } else {
+              this.set('stripeKey', null);
+            }
+          }).catch(err => {
+            this.set('stripeKey', null);
+          });
+      },
+      fetchProducts() {
+        fetch('/api/products')
+          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
+          .then(data => {
+            const products = data.map(product => ({
+              id: product.id || Date.now() + Math.random(),
+              title: product.name || 'Untitled Product',
+              price: Math.max(0, Number(product.price)) || 0,
+              description: product.description || '',
+              currency: product.currency
+            }));
+            this.set('products', products);
+            this.updateTraits();
+          }).catch(error => {
+            this.set('products', []);
+            this.updateTraits();
+          });
+      },
+      updateTraits() {
+        const products = this.get('products') || [];
+        const trait = this.getTrait('selectedProduct');
+        if (trait) {
+            const options = products.map(product => ({
+              id: product.id.toString(),
+              name: `${product.title} (${formatPrice(product.price, product.currency)})`,
+              value: product.id.toString()
+            }));
+            options.unshift({ id: '', name: 'Select a Product...', value: '' });
+            trait.set('options', options);
+        }
+      },
+    },
+    view: {
+      init() {
+        this.listenTo(this.model, 'change:selectedProduct change:stripeKey change:products rerender', this.render);
+      },
+      onRender() {
+        const model = this.model;
+        const componentRootEl = this.el;
+        const stripeKey = model.get('stripeKey');
+        const selectedProductId = model.get('selectedProduct');
+        const products = model.get('products') || [];
+        const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
+
+        let htmlContent;
+        if (!selectedProductId) {
+          htmlContent = 'Please select a product from the settings panel.';
+        } else if (!selectedProduct) {
+          htmlContent = '&lt;div class="text-red-600"&gt;Selected product data not found. Please re-select.&lt;/div&gt;';
+        } else {
+          htmlContent = embeddedCheckout(selectedProduct);
+        }
+        componentRootEl.innerHTML = htmlContent;
+
+        if (!stripeKey || !selectedProduct) return;
+
+        (async () => {
+          try {
+            const stripeInstance = await loadStripe(stripeKey);
+            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
+
+            const checkout = await stripeInstance.initEmbeddedCheckout({
+              fetchClientSecret: async () => {
+                const res = await fetch('/api/create-checkout-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
+                });
+                const { clientSecret } = await res.json();
+                return clientSecret;
+              }
+            });
+
+            const container = componentRootEl.querySelector('#embedded-checkout-container');
+            if (container) {
+              checkout.mount(container);
+            }
+          } catch (error) {
+            const errorMessage = componentRootEl.querySelector('#error-message');
+            if (errorMessage) errorMessage.textContent = error.message;
+          }
+        })();
+      }
+    }
+  });
 }; // End export

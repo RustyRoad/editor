@@ -1,4 +1,5 @@
 import { source as a1 } from './data/cta-1'
+import embeddedCheckout from '../components/embedded-checkout'
 import { source as a1s } from './data/icons/cta-1'
 import { source as a2 } from './data/cta-2'
 import { source as a2s } from './data/icons/cta-2'
@@ -657,6 +658,13 @@ const sources = [
     label: m3s,
     content: m3,
     category: 'Testimonials',
+  },
+  {
+    id: 'Embedded Checkout',
+    class: '',
+    label: e3s,
+    category: 'Commerce',
+    content: {type: 'Embedded Checkout'},
     // order: 1
   },
   {
