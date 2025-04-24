@@ -10,7 +10,10 @@
   "scripts": {
     "dev": "npx grapesjs-cli serve",
     "build": "npx grapesjs-cli build",
-    "bump": "npm version patch -m 'Bump v%s'"
+    "bump": "npm version",
+    "bump:major": "npm version major -m 'Bump v%s'",
+    "bump:minor": "npm version minor -m 'Bump v%s'",
+    "bump:patch": "npm version patch -m 'Bump v%s'"
   },
   "keywords": [
     "grapesjs",
