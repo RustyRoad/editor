@@ -1,190 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css"
-      rel="stylesheet"
-    />
-    <title>Checkout 1</title>
+    <!-- Poppins Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
+    <title>Spotless Bin Co - Checkout</title>
+    <style>
+      body { font-family: 'Poppins', sans-serif; }
+    </style>
   </head>
-  <body>
-<!--
-  This example requires some changes to your config:
-  
-  ```
-  // tailwind.config.js
-  module.exports = {
-    // ...
-    plugins: [
-      // ...
-      require('@tailwindcss/forms'),
-    ],
-  }
-  ```
--->
-<div class="bg-white">
-    <!-- Background color split screen for large screens -->
+  <body class="bg-white">
     <div class="fixed left-0 top-0 hidden h-full w-1/2 bg-white lg:block" aria-hidden="true"></div>
-    <div class="fixed right-0 top-0 hidden h-full w-1/2 bg-indigo-900 lg:block" aria-hidden="true"></div>
-  
-    <header class="relative mx-auto max-w-7xl bg-indigo-900 py-6 lg:grid lg:grid-cols-2 lg:gap-x-16 lg:bg-transparent lg:px-8 lg:pb-10 lg:pt-16">
+    <div class="fixed right-0 top-0 hidden h-full w-1/2 bg-blue-800 lg:block" aria-hidden="true"></div>
+
+    <header class="relative mx-auto max-w-7xl py-6 lg:grid lg:grid-cols-2 lg:gap-x-16 lg:px-8 lg:pt-16">
       <div class="mx-auto flex max-w-2xl px-4 lg:w-full lg:max-w-lg lg:px-0">
-        <a href="#">
-          <span class="sr-only">Your Company</span>
-          <img src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=300" alt="" class="h-8 w-auto lg:hidden">
-          <img src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600" alt="" class="hidden h-8 w-auto lg:block">
+        <a href="/">
+          <span class="sr-only">Spotless Bin Co</span>
+          <img src="https://spotlessbinco.com/logo.png" alt="Spotless Bin Co logo" class="h-10 w-auto" />
         </a>
       </div>
     </header>
-  
+
     <main class="relative mx-auto grid max-w-7xl grid-cols-1 gap-x-16 lg:grid-cols-2 lg:px-8">
-      <h1 class="sr-only">Checkout</h1>
-  
-      <section aria-labelledby="summary-heading" class="bg-indigo-900 pb-12 pt-6 text-indigo-300 md:px-10 lg:col-start-2 lg:row-start-1 lg:mx-auto lg:w-full lg:max-w-lg lg:bg-transparent lg:px-0 lg:pb-24 lg:pt-0">
+      <h1 class="sr-only">Bin Cleaning Checkout</h1>
+
+      <!-- Order Summary -->
+      <section aria-labelledby="summary-heading" class="bg-blue-800 pb-12 pt-6 text-blue-200 md:px-10 lg:col-start-2 lg:mx-auto lg:w-full lg:max-w-lg lg:bg-transparent lg:px-0 lg:pb-24 lg:pt-0">
         <div class="mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0">
-          <h2 id="summary-heading" class="sr-only">Order summary</h2>
-  
-          <dl>
-            <dt class="text-sm font-medium">Amount due</dt>
-            <dd class="mt-1 text-3xl font-bold tracking-tight text-white">$232.00</dd>
+          <h2 id="summary-heading" class="text-xl font-bold text-white">Order Summary</h2>
+
+          <dl class="mt-4">
+            <dt class="text-sm font-medium text-blue-200">Amount Due</dt>
+            <dd class="mt-1 text-3xl font-bold tracking-tight text-white">$49.00</dd>
           </dl>
-  
-          <ul role="list" class="divide-y divide-white divide-opacity-10 text-sm font-medium">
+
+          <ul role="list" class="divide-y divide-white divide-opacity-10 text-sm font-medium mt-6">
             <li class="flex items-start space-x-4 py-6">
-              <img src="https://tailwindui.com/img/ecommerce-images/checkout-page-07-product-01.jpg" alt="Front of zip tote bag with white canvas, white handles, and black drawstring top." class="h-20 w-20 flex-none rounded-md object-cover object-center">
+              <img src="https://spotlessbinco.com/assets/bin-icon.png" alt="Bin cleaning service" class="h-20 w-20 flex-none rounded-md object-cover object-center" />
               <div class="flex-auto space-y-1">
-                <h3 class="text-white">High Wall Tote</h3>
-                <p>White and black</p>
-                <p>15L</p>
+                <h3 class="text-white">Basic Bin Cleaning</h3>
+                <p>1 Service</p>
               </div>
-              <p class="flex-none text-base font-medium text-white">$210.00</p>
+              <p class="flex-none text-base font-medium text-white">$49.00</p>
             </li>
-  
-            <!-- More products... -->
           </ul>
-  
+
           <dl class="space-y-6 border-t border-white border-opacity-10 pt-6 text-sm font-medium">
             <div class="flex items-center justify-between">
               <dt>Subtotal</dt>
-              <dd>$570.00</dd>
+              <dd>$49.00</dd>
             </div>
-  
             <div class="flex items-center justify-between">
-              <dt>Shipping</dt>
-              <dd>$25.00</dd>
+              <dt>Tax (8%)</dt>
+              <dd>$3.92</dd>
             </div>
-  
-            <div class="flex items-center justify-between">
-              <dt>Taxes</dt>
-              <dd>$47.60</dd>
-            </div>
-  
             <div class="flex items-center justify-between border-t border-white border-opacity-10 pt-6 text-white">
               <dt class="text-base">Total</dt>
-              <dd class="text-base">$642.60</dd>
+              <dd class="text-base">$52.92</dd>
             </div>
           </dl>
         </div>
       </section>
-  
-      <section aria-labelledby="payment-and-shipping-heading" class="py-16 lg:col-start-1 lg:row-start-1 lg:mx-auto lg:w-full lg:max-w-lg lg:pb-24 lg:pt-0">
-        <h2 id="payment-and-shipping-heading" class="sr-only">Payment and shipping details</h2>
-  
-        <form>
-          <div class="mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0">
-            <div>
-              <h3 id="contact-info-heading" class="text-lg font-medium text-gray-900">Contact information</h3>
-  
-              <div class="mt-6">
-                <label for="email-address" class="block text-sm font-medium text-gray-700">Email address</label>
-                <div class="mt-1">
-                  <input type="email" id="email-address" name="email-address" autocomplete="email" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                </div>
+
+      <!-- Payment & Service Details -->
+      <section aria-labelledby="details-heading" class="py-16 lg:col-start-1 lg:mx-auto lg:w-full lg:max-w-lg lg:pb-24 lg:pt-0">
+        <h2 id="details-heading" class="sr-only">Payment and Service Details</h2>
+
+        <form class="mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0">
+          <!-- Contact Information -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900">Contact Information</h3>
+            <div class="mt-4">
+              <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+              <div class="mt-1">
+                <input type="email" id="email" name="email" autocomplete="email" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
               </div>
             </div>
-  
-            <div class="mt-10">
-              <h3 id="payment-heading" class="text-lg font-medium text-gray-900">Payment details</h3>
-  
-              <div class="mt-6 grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4">
-                <div class="col-span-3 sm:col-span-4">
-                  <label for="card-number" class="block text-sm font-medium text-gray-700">Card number</label>
-                  <div class="mt-1">
-                    <input type="text" id="card-number" name="card-number" autocomplete="cc-number" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                  </div>
-                </div>
-  
-                <div class="col-span-2 sm:col-span-3">
-                  <label for="expiration-date" class="block text-sm font-medium text-gray-700">Expiration date (MM/YY)</label>
-                  <div class="mt-1">
-                    <input type="text" name="expiration-date" id="expiration-date" autocomplete="cc-exp" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                  </div>
-                </div>
-  
-                <div>
-                  <label for="cvc" class="block text-sm font-medium text-gray-700">CVC</label>
-                  <div class="mt-1">
-                    <input type="text" name="cvc" id="cvc" autocomplete="csc" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                  </div>
-                </div>
+          </div>
+
+          <!-- Service Address -->
+          <div class="mt-10">
+            <h3 class="text-lg font-medium text-gray-900">Service Address</h3>
+            <div class="mt-4">
+              <label for="address" class="block text-sm font-medium text-gray-700">Street Address</label>
+              <input type="text" id="address" name="address" autocomplete="street-address" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-x-4">
+              <div>
+                <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                <input type="text" id="city" name="city" autocomplete="address-level2" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+              </div>
+              <div>
+                <label for="zip" class="block text-sm font-medium text-gray-700">ZIP code</label>
+                <input type="text" id="zip" name="zip" autocomplete="postal-code" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
               </div>
             </div>
-  
-            <div class="mt-10">
-              <h3 id="shipping-heading" class="text-lg font-medium text-gray-900">Shipping address</h3>
-  
-              <div class="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
-                <div class="sm:col-span-3">
-                  <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
-                  <div class="mt-1">
-                    <input type="text" id="address" name="address" autocomplete="street-address" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                  </div>
-                </div>
-  
-                <div>
-                  <label for="city" class="block text-sm font-medium text-gray-700">City</label>
-                  <div class="mt-1">
-                    <input type="text" id="city" name="city" autocomplete="address-level2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                  </div>
-                </div>
-  
-                <div>
-                  <label for="region" class="block text-sm font-medium text-gray-700">State / Province</label>
-                  <div class="mt-1">
-                    <input type="text" id="region" name="region" autocomplete="address-level1" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                  </div>
-                </div>
-  
-                <div>
-                  <label for="postal-code" class="block text-sm font-medium text-gray-700">Postal code</label>
-                  <div class="mt-1">
-                    <input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                  </div>
-                </div>
+          </div>
+
+          <!-- Payment Details -->
+          <div class="mt-10">
+            <h3 class="text-lg font-medium text-gray-900">Payment Details</h3>
+            <div class="mt-6 grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4">
+              <div class="col-span-3 sm:col-span-4">
+                <label for="card-number" class="block text-sm font-medium text-gray-700">Card number</label>
+                <input type="text" id="card-number" name="card-number" autocomplete="cc-number" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+              </div>
+              <div class="col-span-2 sm:col-span-3">
+                <label for="expiry" class="block text-sm font-medium text-gray-700">Expiration date (MM/YY)</label>
+                <input type="text" id="expiry" name="expiry" autocomplete="cc-exp" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+              </div>
+              <div>
+                <label for="cvc" class="block text-sm font-medium text-gray-700">CVC</label>
+                <input type="text" id="cvc" name="cvc" autocomplete="csc" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
               </div>
             </div>
-  
-            <div class="mt-10">
-              <h3 class="text-lg font-medium text-gray-900">Billing information</h3>
-  
-              <div class="mt-6 flex items-center">
-                <input id="same-as-shipping" name="same-as-shipping" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                <div class="ml-2">
-                  <label for="same-as-shipping" class="text-sm font-medium text-gray-900">Same as shipping information</label>
-                </div>
-              </div>
+          </div>
+
+          <!-- Coupon Code -->
+          <div class="mt-10">
+            <label for="coupon" class="block text-sm font-medium text-gray-700">Coupon Code</label>
+            <div class="mt-1 flex">
+              <input type="text" id="coupon" name="coupon" placeholder="BINBUCKS5" class="block w-full rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+              <button type="button" class="rounded-r-md border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Apply</button>
             </div>
-  
-            <div class="mt-10 flex justify-end border-t border-gray-200 pt-6">
-              <button type="submit" class="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50">Pay now</button>
-            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="mt-10 flex justify-end border-t border-gray-200 pt-6">
+            <button type="submit" class="rounded-md bg-green-500 px-6 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500">Pay & Schedule</button>
           </div>
         </form>
       </section>
     </main>
-  </div>
-  
   </body>
 </html>

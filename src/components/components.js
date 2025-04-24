@@ -1,5 +1,7 @@
 import webinarCheckout1 from "./webinar-checkout-1";
 import embeddedCheckout from "./embedded-checkout";
+import serviceSignup from "./service-signup";
+import serviceValidation from "./service-validation";
 import { loadStripe } from '@stripe/stripe-js';
 
 // Helper function defined within the main export scope
@@ -14,320 +16,254 @@ const formatPrice = (amount, currency) => {
   }).format(numAmount);
 };
 
-export default (editor, opts = {}) => {
-  const domc = editor.DomComponents;
-  const componentType = 'Checkout 2 Step';
+// Register components with GrapesJS
+const components = (editor, opts = {}) => {
+  const components = editor.DomComponents;
 
-  domc.addType(componentType, {
-    isComponent: el => {
-      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'webinar-checkout-1') {
-        return { type: componentType };
-      }
-    },
+  // Register Service Validation component
+  components.addType('service-validation', {
     model: {
       defaults: {
-        tagName: 'div',
-        attributes: { 'data-gjs-type': 'webinar-checkout-2' },
-        content: 'Select a product...', // Initial placeholder
-        droppable: false,
-        // Define properties that trigger re-render/script execution when changed
-        // We'll listen to these changes in the view
-        stylable: [], // Add relevant style props if needed
-        // Remove script property, logic moves to view
+        component: serviceValidation,
         traits: [
           {
             type: 'select',
-            label: 'Select Product',
-            name: 'selectedProduct', // Trait name stores the ID
+            label: 'Select Service',
+            name: 'selectedService',
             options: [],
-            changeProp: 1 // Trigger model change on trait selection
+            changeProp: 1
+          },
+          {
+            type: 'text',
+            name: 'address1',
+            label: 'Street Address',
+          },
+          {
+            type: 'text',
+            name: 'city',
+            label: 'City',
+          },
+          {
+            type: 'text',
+            name: 'state',
+            label: 'State',
+          },
+          {
+            type: 'text',
+            name: 'zip5',
+            label: 'ZIP Code',
           }
         ],
-        // Internal model properties (not traits)
-        stripeKey: null,
-        products: [],
-        title: 'Webinar Checkout 1' // Keep title if needed
+        stylable: true,
+        resizable: true,
+        droppable: false,
+        services: [],
       },
       init() {
-        // Listen for product selection change to update content via view's render
-        this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
-        // Listen for stripeKey change
-        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
-        // Listen for products change
-         this.listenTo(this, 'change:products', this.handleDataChange);
-
-        this.fetchStripeKey();
-        this.fetchProducts();
+        this.listenTo(this, 'change:selectedService', this.handleServiceChange);
+        this.fetchServices();
       },
-      // Triggered when selectedProduct trait changes
-      handleProductChange() {
-         console.log('[Model] Product selection changed:', this.get('selectedProduct'));
-         // No need to call updateContent directly, view's onRender will handle it
-         // Force a re-render if GrapesJS doesn't do it automatically on trait change
-         this.trigger('rerender'); // Custom event, or use built-in if available
+      handleServiceChange() {
+        this.trigger('rerender');
       },
-       // Triggered when stripeKey or products change
-      handleDataChange() {
-         console.log('[Model] Stripe key or products updated.');
-         // Force a re-render if a product is already selected
-         if (this.get('selectedProduct')) {
-            this.trigger('rerender');
-         }
-      },
-      fetchStripeKey() {
-        console.log('[Components Model] Fetching Stripe key...');
-      //  let token = "";
-        // Use user's preferred localhost URL
-        // ex response {"public_key":"pk_test_fQMbieMo9lIO0XOD3Os9VXE8"}
-        fetch('/api/stripe/key', {
-             method: 'GET',
-             headers: {
-               "Content-Type": "application/json",
-              // "Authorization": "Bearer " + token,
-         
-              }
-              
-            })
-          .then(response => response.json())
+      fetchServices() {
+        fetch('/api/product/all')
+          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
-            console.log('[Components Model] Stripe key response:', data);
-            if (data && data.public_key) {
-              console.log('[Components Model] Stripe key fetched.');
-              this.set('stripeKey', data.public_key); // Triggers change:stripeKey
-            } else {
-               console.error('[Components Model] Failed to fetch valid Stripe key data:', data);
-               this.set('stripeKey', null);
-            }
-          }).catch(err => {
-              console.error('[Components Model] Error fetching Stripe key:', err);
-              this.set('stripeKey', null);
-          });
-      },
-      fetchProducts() {
-        console.log('[Components Model] Fetching products...');
-         // Use user's preferred localhost URL
-        fetch('/api/products')
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-             return response.text().then(text => text ? JSON.parse(text) : []);
-          })
-          .then(data => {
-            if (!Array.isArray(data)) {
-              console.error('[Components Model] Invalid products data format:', data);
-              throw new Error('Invalid products data format');
-            }
-            const products = data.map(product => ({
-              id: product.id || Date.now() + Math.random(),
-              title: product.name || 'Untitled Product',
-              price: Math.max(0, Number(product.price)) || 0,
-              description: product.description || '',
-              images: product.images || [],
-              currency: product.currency
+            const services = data.map(service => ({
+              id: service.id || Date.now() + Math.random(),
+              title: service.name || 'Untitled Service',
+              price: Math.max(0, Number(service.price)) || 0,
+              description: service.description || '',
+              currency: service.currency
             }));
-            console.log('[Components Model] Fetched products:', products);
-            this.set('products', products); // Triggers change:products
+            this.set('services', services);
             this.updateTraits();
           }).catch(error => {
-            console.error('[Components Model] Product fetch error:', error);
-             this.set('products', []);
-             this.updateTraits(); // Update traits even on error (to show empty list)
+            this.set('services', []);
+            this.updateTraits();
           });
       },
       updateTraits() {
-        const products = this.get('products') || [];
-        const trait = this.getTrait('selectedProduct');
+        const services = this.get('services') || [];
+        const trait = this.getTrait('selectedService');
         if (trait) {
-            const currentVal = this.get('selectedProduct');
-            const options = products.map(product => ({
-              id: product.id.toString(),
-              name: `${product.title} (${formatPrice(product.price, product.currency)})`,
-              value: product.id.toString()
-            }));
-            options.unshift({ id: '', name: 'Select a Product...', value: '' });
-            trait.set('options', options);
-            // GrapesJS should handle setting the value based on the model attribute
-            // if (!products.some(p => p.id.toString() === currentVal)) {
-            //      trait.set('value', ''); // Let GrapesJS handle default/current value
-            // }
-        } else {
-             console.error("[Components Model] 'selectedProduct' trait not found.");
+          const options = services.map(service => ({
+            id: service.id.toString(),
+            name: `${service.title} (${formatPrice(service.price, service.currency)})`,
+            value: service.id.toString()
+          }));
+          options.unshift({ id: '', name: 'Select a Service...', value: '' });
+          trait.set('options', options);
         }
-      },
-      // Removed updateContent - logic moved to view.onRender
-    }, // End model
-
+      }
+    },
     view: {
-      // Listen to model changes that require re-rendering or script execution
       init() {
-        this.listenTo(this.model, 'change:selectedProduct change:stripeKey change:products rerender', this.render);
+        this.listenTo(this.model, 'change:address1 change:city change:state change:zip5', this.handleAddressChange);
       },
+      handleAddressChange() {
+        const address1 = this.model.get('address1');
+        const city = this.model.get('city');
+        const state = this.model.get('state');
+        const zip5 = this.model.get('zip5');
+        
+        if (address1 && city && state && zip5) {
+          this.validateAddress(address1, city, state, zip5);
+        }
+      },
+      async validateAddress(address1, city, state, zip5) {
+        try {
+          const resp = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: {
+                address1,
+                address2: null,
+                city,
+                state,
+                zip5,
+                zip4: null
+              },
+              zone_id: 1
+            })
+          });
 
+          if (!resp.ok) throw new Error('API error');
+          
+          const data = await resp.json();
+          this.model.set('validationResult', data.inside_zone ? 'valid' : 'invalid');
+        } catch (error) {
+          this.model.set('validationResult', 'error');
+          console.error('Address validation error:', error);
+        }
+      },
       onRender() {
-        console.log('[View] onRender triggered.');
-        const model = this.model;
-        const componentRootEl = this.el;
-
-        // --- Get data ---
-        const stripeKey = model.get('stripeKey');
-        const selectedProductId = model.get('selectedProduct');
-        const products = model.get('products') || [];
-        const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
-
-        // --- Generate HTML ---
-        let htmlContent;
-        if (!selectedProductId) {
-          htmlContent = 'Please select a product from the settings panel.';
-        } else if (!selectedProduct) {
-          htmlContent = '<div class="text-red-600">Selected product data not found. Please re-select.</div>';
+        const el = this.el;
+        const selectedServiceId = this.model.get('selectedService');
+        const services = this.model.get('services') || [];
+        const selectedService = services.find(s => s.id?.toString() === selectedServiceId);
+        
+        if (!selectedServiceId) {
+          el.innerHTML = 'Please select a service from the settings panel. you idiot';
+        } else if (!selectedService) {
+          el.innerHTML = '<div class="text-red-600">Selected service not found. Please re-select.</div>';
         } else {
-          htmlContent = webinarCheckout1(selectedProduct); // Call template function
+          el.innerHTML = serviceValidation(selectedService);
         }
-        // Set inner HTML - this should happen before trying to mount Stripe
-        componentRootEl.innerHTML = htmlContent;
+        
+        const address1Input = el.querySelector('#address1');
+        const cityInput = el.querySelector('#city');
+        const stateInput = el.querySelector('#state');
+        const zip5Input = el.querySelector('#zip5');
+        const checkBtn = el.querySelector('#check-availability');
+        const feedbackDiv = el.querySelector('#address-feedback');
 
-        // --- Check prerequisites for Stripe ---
-        const initFlag = `stripeRendered_${selectedProductId || 'none'}`;
-        if (componentRootEl.dataset[initFlag]) {
-           console.log(`[View] Stripe already rendered for product ${selectedProductId}.`);
-           return; // Already initialized for this product in this view instance
+        if (!checkBtn || !feedbackDiv) return;
+
+        function setFeedback(msg, color) {
+          feedbackDiv.textContent = msg;
+          feedbackDiv.style.color = color;
         }
-         if (!stripeKey || !selectedProduct) {
-           console.log('[View] Skipping Stripe initialization: Missing key or product.');
-           return; // Not ready for Stripe yet
-         }
 
-        // Mark as initialized for this product render cycle
-         Object.keys(componentRootEl.dataset).forEach(key => {
-             if (key.startsWith('stripeRendered_')) delete componentRootEl.dataset[key];
-         });
-        componentRootEl.dataset[initFlag] = 'true';
-        console.log('[View] Initializing Stripe in onRender for Product ID:', selectedProductId);
+        const handleCheckAvailability = async () => {
+          const address1 = address1Input.value.trim();
+          const city = cityInput.value.trim();
+          const state = stateInput.value.trim();
+          const zip5 = zip5Input.value.trim();
 
-        // --- Helper to display errors ---
-        const displayError = (message) => {
-          const errorMessageDiv = componentRootEl.querySelector('#error-message');
-          if (errorMessageDiv) errorMessageDiv.textContent = message;
-          const submitButton = componentRootEl.querySelector('#submit-button');
-          if(submitButton) submitButton.disabled = false;
+          setFeedback('⏳ Checking...', '#2563eb');
+
+          if (!address1 || !city || !state || !zip5) {
+            const missingFields = [];
+            if (!address1) missingFields.push('Street Address');
+            if (!city) missingFields.push('City');
+            if (!state) missingFields.push('State');
+            if (!zip5) missingFields.push('ZIP Code');
+            
+            setFeedback(`Please complete: ${missingFields.join(', ')}`, '#b91c1c');
+            return;
+          }
+
+          try {
+            const resp = await fetch('/api/geocode', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                address: {
+                  address1,
+                  address2: null,
+                  city,
+                  state,
+                  zip5,
+                  zip4: null
+                },
+                zone_id: 1
+              })
+            });
+
+            if (!resp.ok) throw new Error('API error');
+            
+            const data = await resp.json();
+            if (data.inside_zone) {
+              setFeedback('✅ Address is in service area', '#16a34a');
+            } else {
+              setFeedback('❌ Address is outside service area', '#b91c1c');
+            }
+          } catch (error) {
+            setFeedback('⚠️ Error validating address', '#b91c1c');
+            console.error('Validation error:', error);
+          }
         };
 
-        // --- Stripe Initialization and Mounting (Async IIFE) ---
-        (async () => {
-          let stripeInstance, elementsInstance, paymentElementInstance; // Keep scope local
-          try {
-            console.log('[View onRender] Loading Stripe...');
-            stripeInstance = await loadStripe(stripeKey);
-            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
-            console.log('[View onRender] Stripe loaded.');
+        checkBtn.addEventListener('click', handleCheckAvailability);
 
-            const appearance = { theme: 'stripe', variables: { colorPrimary: '#6366f1' } };
-            let elementsOptions = {};
-            const productPrice = selectedProduct.price;
-            const productId = selectedProduct.id;
+        [address1Input, cityInput, stateInput, zip5Input].forEach(input => {
+          input?.addEventListener('input', () => setFeedback('', ''));
+        });
 
-            if (productPrice > 0) {
-              elementsOptions = { mode: 'payment', currency: (selectedProduct.currency || 'usd').toLowerCase(), amount: Math.round(productPrice * 100), appearance };
-            } else {
-              elementsOptions = { mode: 'setup', currency: (selectedProduct.currency || 'usd').toLowerCase(), appearance };
-            }
-            console.log("[View onRender] Initializing Stripe Elements:", elementsOptions);
+        // Cleanup event listeners when component is removed
+        this.listenTo(this.model, 'destroy', () => {
+          checkBtn.removeEventListener('click', handleCheckAvailability);
+          [address1Input, cityInput, stateInput, zip5Input].forEach(input => {
+            input?.removeEventListener('input', () => setFeedback('', ''));
+          });
+        });
+      }
+    }
+  });
 
-            elementsInstance = stripeInstance.elements(elementsOptions);
-            paymentElementInstance = elementsInstance.create('payment');
-            console.log("[View onRender] Payment Element created.");
+  // Register other existing components
+  components.addType('webinar-checkout-1', {
+    model: {
+      defaults: {
+        component: webinarCheckout1,
+        stylable: true
+      }
+    }
+  });
 
-            const paymentElementContainer = componentRootEl.querySelector('#payment-element');
-            if (paymentElementContainer) {
-              paymentElementContainer.innerHTML = ''; // Clear previous just in case
-              console.log('[View onRender] Mounting Payment Element...');
-              paymentElementInstance.mount(paymentElementContainer);
-              console.log('[View onRender] Payment Element mount attempted.');
-            } else {
-               console.error("[View onRender] Error: #payment-element container not found!");
-               displayError("Payment form container missing.");
-            }
+  components.addType('embedded-checkout', {
+    model: {
+      defaults: {
+        component: embeddedCheckout,
+        stylable: true
+      }
+    }
+  });
 
-            // --- Setup Form Submission ---
-            const form = componentRootEl.querySelector('#payment-form');
-            const submitButton = componentRootEl.querySelector('#submit-button');
-
-            if (form && submitButton) {
-               console.log('[View onRender] Adding submit listener.');
-               const errorMessageDiv = componentRootEl.querySelector('#error-message');
-
-               // Remove previous listener if exists (using stored handler on element)
-               if (componentRootEl.stripeSubmitHandler) {
-                  form.removeEventListener('submit', componentRootEl.stripeSubmitHandler);
-               }
-
-               const handleSubmit = async (e) => {
-                  e.preventDefault();
-                  submitButton.disabled = true;
-                  if(errorMessageDiv) errorMessageDiv.textContent = '';
-
-                  if (productPrice <= 0) {
-                    console.log("[View onRender] Processing free order...");
-                    if(errorMessageDiv) errorMessageDiv.textContent = 'Processing your free order...';
-                    setTimeout(() => window.location.href = window.location.origin + '/order-confirmation?product_id=' + productId + '&free=true', 500);
-                  } else {
-                    let clientSecret;
-                    try {
-                      console.log('[View onRender] Submitting paid order. Fetching client secret...');
-                      // Use user's preferred localhost URL
-                      const res = await fetch('/api/create-payment-intent', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ productId: productId, amount: productPrice })
-                      });
-                      if (!res.ok) {
-                         let errorMsg = `API Error: ${res.status} ${res.statusText}`;
-                         try { const errBody = await res.json(); errorMsg = errBody.error || errorMsg; } catch (_) {}
-                         throw new Error(errorMsg);
-                      }
-                      const { clientSecret: fetchedSecret, error: backendError } = await res.json();
-
-                      if (backendError || !fetchedSecret) {
-                        throw new Error(backendError || 'Failed to create Payment Intent on submit.');
-                      }
-                      clientSecret = fetchedSecret;
-                      console.log('[View onRender] Client secret fetched. Confirming payment...');
-
-                      const emailInput = componentRootEl.querySelector('#email-address');
-                      const email = emailInput ? emailInput.value : '';
-
-                      const { error } = await stripeInstance.confirmPayment({
-                        elements: elementsInstance,
-                        clientSecret: clientSecret,
-                        confirmParams: {
-                          return_url: window.location.origin + '/order-confirmation?product_id=' + productId,
-                          receipt_email: email,
-                        },
-                      });
-                      if (error) throw error;
-                      if(errorMessageDiv) errorMessageDiv.textContent = 'Processing payment...';
-                    } catch (error) {
-                      console.error("[View onRender] Payment processing error:", error);
-                      displayError(error.message || 'An unexpected error occurred.');
-                    }
-                  }
-               };
-               componentRootEl.stripeSubmitHandler = handleSubmit; // Store handler reference
-               form.addEventListener('submit', handleSubmit);
-            } else {
-               console.error("[View onRender] Error: Form or submit button not found!");
-               displayError("Checkout form elements missing.");
-            }
-
-          } catch (error) {
-            console.error("[View onRender] General Stripe setup error:", error);
-            displayError(`Error initializing payment form: ${error.message}`);
-            delete componentRootEl.dataset[initFlag]; // Allow retry on error
-          }
-        })(); // Immediately invoke the async function
-      } // End onRender
-    } // End view
-  }); // End addType
-
+  components.addType('service-signup', {
+    model: {
+      defaults: {
+        component: serviceSignup,
+        stylable: true
+      }
+    }
+  });
+  const domc = editor.DomComponents;
+  const componentType = 'Checkout 2 Step';
+  
   // Add Embedded Checkout component type
   domc.addType('Embedded Checkout', {
     isComponent: el => {
@@ -359,7 +295,7 @@ export default (editor, opts = {}) => {
         this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
         this.listenTo(this, 'change:stripeKey', this.handleDataChange);
         this.listenTo(this, 'change:products', this.handleDataChange);
-
+        
         this.fetchStripeKey();
         this.fetchProducts();
       },
@@ -385,11 +321,11 @@ export default (editor, opts = {}) => {
           }).catch(err => {
             this.set('stripeKey', null);
           });
-      },
+        },
       fetchProducts() {
         fetch('/api/products')
-          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
-          .then(data => {
+        .then(response => response.text().then(text => text ? JSON.parse(text) : []))
+        .then(data => {
             const products = data.map(product => ({
               id: product.id || Date.now() + Math.random(),
               title: product.name || 'Untitled Product',
@@ -408,13 +344,13 @@ export default (editor, opts = {}) => {
         const products = this.get('products') || [];
         const trait = this.getTrait('selectedProduct');
         if (trait) {
-            const options = products.map(product => ({
-              id: product.id.toString(),
-              name: `${product.title} (${formatPrice(product.price, product.currency)})`,
-              value: product.id.toString()
-            }));
-            options.unshift({ id: '', name: 'Select a Product...', value: '' });
-            trait.set('options', options);
+          const options = products.map(product => ({
+            id: product.id.toString(),
+            name: `${product.title} (${formatPrice(product.price, product.currency)})`,
+            value: product.id.toString()
+          }));
+          options.unshift({ id: '', name: 'Select a Product...', value: '' });
+          trait.set('options', options);
         }
       },
     },
@@ -429,27 +365,27 @@ export default (editor, opts = {}) => {
         const selectedProductId = model.get('selectedProduct');
         const products = model.get('products') || [];
         const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
-
+        
         let htmlContent;
         if (!selectedProductId) {
           htmlContent = 'Please select a product from the settings panel.';
         } else if (!selectedProduct) {
-          htmlContent = '&lt;div class="text-red-600"&gt;Selected product data not found. Please re-select.&lt;/div&gt;';
+          htmlContent = '<div class="text-red-600">Selected product data not found. Please re-select.</div>';
         } else {
           htmlContent = embeddedCheckout(selectedProduct);
         }
         componentRootEl.innerHTML = htmlContent;
 
         if (!stripeKey || !selectedProduct) return;
-
+        
         (async () => {
           try {
             const stripeInstance = await loadStripe(stripeKey);
             if (!stripeInstance) throw new Error("Stripe.js failed to load.");
-
+            
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('/api/create-checkout-session', {
+                const res = await fetch('/api/stripe/create-checkout-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -471,4 +407,425 @@ export default (editor, opts = {}) => {
       }
     }
   });
-}; // End export
+
+  // Add Service Signup component type
+  domc.addType('Service Signup', {
+    isComponent: el => {
+      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'service-signup') {
+        return { type: 'Service Signup' };
+      }
+    },
+    model: {
+      defaults: {
+        tagName: 'div',
+        attributes: { 'data-gjs-type': 'service-signup' },
+        content: 'Select a service...',
+        droppable: false,
+        stylable: [],
+        traits: [
+          {
+            type: 'select',
+            label: 'Select Service',
+            name: 'selectedProduct',
+            
+            options: [],
+            changeProp: 1
+          }
+        ],
+        stripeKey: null,
+        products: [],
+        title: 'Service Signup'
+      },
+      init() {
+        this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
+        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
+        this.listenTo(this, 'change:products', this.handleDataChange);
+
+        this.fetchStripeKey();
+        this.fetchProducts();
+      },
+      handleProductChange() {
+        console.log('[Service Signup Model] Product selection changed:', this.get('selectedProduct'));
+        this.trigger('rerender');
+      },
+      handleDataChange() {
+        console.log('[Service Signup Model] Stripe key or products updated.');
+        if (this.get('selectedProduct')) {
+          this.trigger('rerender');
+        }
+      },
+      fetchStripeKey() {
+        fetch('/api/stripe/key')
+          .then(response => response.json())
+          .then(data => {
+            if (data && data.public_key) {
+              this.set('stripeKey', data.public_key);
+            } else {
+              this.set('stripeKey', null);
+            }
+          }).catch(err => {
+            this.set('stripeKey', null);
+          });
+      },
+      fetchProducts() {
+        fetch('/api/product/all')
+          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
+          .then(data => {
+            const products = data.map(product => ({
+              id: product.id || Date.now() + Math.random(),
+              title: product.name || 'Untitled Product',
+              price: Math.max(0, Number(product.price)) || 0,
+              description: product.description || '',
+              currency: product.currency
+            }));
+            this.set('products', products);
+            this.updateTraits();
+          }).catch(error => {
+            this.set('products', []);
+            this.updateTraits();
+          });
+      },
+      updateTraits() {
+        const products = this.get('products') || [];
+        const trait = this.getTrait('selectedProduct');
+        if (trait) {
+          const options = products.map(product => ({
+            id: product.id.toString(),
+            name: `${product.title} (${formatPrice(product.price, product.currency)})`,
+            value: product.id.toString()
+          }));
+          options.unshift({ id: '', name: 'Select a Service...', value: '' });
+          trait.set('options', options);
+        }
+      }
+    },
+    view: {
+      init() {
+        this.listenTo(this.model, 'change:selectedProduct change:stripeKey change:products rerender', this.render);
+      },
+      onRender() {
+        const model = this.model;
+        const componentRootEl = this.el;
+        const stripeKey = model.get('stripeKey');
+        const selectedProductId = model.get('selectedProduct');
+        const products = model.get('products') || [];
+        const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
+
+        let htmlContent;
+        if (!selectedProductId) {
+          htmlContent = 'Please select a service from the settings panel.';
+        } else if (!selectedProduct) {
+          htmlContent = '<div class="text-red-600">Selected service data not found. Please re-select.</div>';
+        } else {
+          htmlContent = serviceSignup(selectedProduct);
+        }
+        componentRootEl.innerHTML = htmlContent;
+
+        if (!stripeKey || !selectedProduct) return;
+
+        // Initialize address validation
+        const address1Input = componentRootEl.querySelector('#address1');
+        const cityInput = componentRootEl.querySelector('#city');
+        const stateInput = componentRootEl.querySelector('#state');
+        const zip5Input = componentRootEl.querySelector('#zip5');
+        const checkBtn = componentRootEl.querySelector('#check-availability');
+        const feedbackDiv = componentRootEl.querySelector('#address-feedback');
+        const submitBtn = componentRootEl.querySelector('#submit-button');
+
+        function setFeedback(msg, color) {
+          feedbackDiv.textContent = msg;
+          feedbackDiv.style.color = color;
+        }
+
+        function setSubmitEnabled(enabled) {
+          if (enabled) {
+            submitBtn.removeAttribute('disabled');
+            submitBtn.classList.remove('opacity-50');
+          } else {
+            submitBtn.setAttribute('disabled', 'disabled');
+            submitBtn.classList.add('opacity-50');
+          }
+        }
+
+        setSubmitEnabled(false);
+
+        const checkAvailability = async function () {
+          const address1 = address1Input.value.trim();
+          const city = cityInput.value.trim();
+          const state = stateInput.value.trim();
+          const zip5 = zip5Input.value.trim();
+
+          setFeedback('⏳ Checking...', '#2563eb');
+          setSubmitEnabled(false);
+
+          if (!address1 || !city || !state || !zip5) {
+            setFeedback('Please complete all address fields.', '#b91c1c');
+            return;
+          }
+
+          try {
+            const resp = await fetch('/api/geocode', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                address: {
+                  address1,
+                  address2: null,
+                  city,
+                  state,
+                  zip5,
+                  zip4: null
+                },
+                zone_id: 1
+              })
+            });
+
+            if (!resp.ok) {
+              throw new Error('API error');
+            }
+            const data = await resp.json();
+            if (data.inside_zone) {
+              setFeedback('✅ Address is in service area.', '#16a34a');
+              setSubmitEnabled(true);
+            } else {
+              setFeedback('❌ Address is outside the service area.', '#b91c1c');
+              setSubmitEnabled(false);
+            }
+          } catch (e) {
+            if (e.message.includes('Failed to fetch') || e.message.includes('timeout')) {
+              setFeedback('⚠️ Connection error. Please check your network and try again.', '#b91c1c');
+            } else {
+              setFeedback('⚠️ Could not verify address. Please check and try again.', '#b91c1c');
+            }
+            setSubmitEnabled(false);
+          }
+        };
+
+        const clearFeedback = function () {
+          setFeedback('', '');
+          setSubmitEnabled(false);
+        };
+
+        checkBtn.addEventListener('click', checkAvailability);
+        address1Input.addEventListener('input', clearFeedback);
+        cityInput.addEventListener('input', clearFeedback);
+        stateInput.addEventListener('input', clearFeedback);
+        zip5Input.addEventListener('input', clearFeedback);
+
+        // Cleanup event listeners when component is removed
+        this.listenTo(this.model, 'destroy', () => {
+          checkBtn.removeEventListener('click', checkAvailability);
+          address1Input.removeEventListener('input', clearFeedback);
+          cityInput.removeEventListener('input', clearFeedback);
+          stateInput.removeEventListener('input', clearFeedback);
+          zip5Input.removeEventListener('input', clearFeedback);
+        });
+
+        // Initialize Stripe embedded checkout
+        (async () => {
+          try {
+            const stripeInstance = await loadStripe(stripeKey);
+            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
+
+            const checkout = await stripeInstance.initEmbeddedCheckout({
+              fetchClientSecret: async () => {
+                const res = await fetch('/api/stripe/create-checkout-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
+                });
+                const { clientSecret } = await res.json();
+                return clientSecret;
+              }
+            });
+
+            const container = componentRootEl.querySelector('#embedded-checkout-container');
+            if (container) {
+              checkout.mount(container);
+            }
+          } catch (error) {
+            const errorMessage = componentRootEl.querySelector('#error-message');
+            if (errorMessage) errorMessage.textContent = error.message;
+          }
+        })();
+      }
+    }
+  });
+
+  // Add service validation component type
+  domc.addType('Service Validation', {
+    isComponent: el => {
+      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'service-validation') {
+        return { type: 'Service Validation' };
+      }
+    },
+    model: {
+      defaults: {
+        tagName: 'div',
+        attributes: { 'data-gjs-type': 'service-validation' },
+        content: 'Select a service for validation...',
+        droppable: false,
+        stylable: [],
+        traits: [
+          {
+            type: 'select',
+            label: 'Select Service',
+            name: 'selectedService',
+            options: [],
+            changeProp: 1
+          }
+        ],
+        stripeKey: null,
+        services: [],
+        title: 'Service Validation'
+      },
+      init() {
+        this.listenTo(this, 'change:selectedService', this.handleProductChange);
+        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
+        this.listenTo(this, 'change:services', this.handleDataChange);
+
+        this.fetchStripeKey();
+        this.fetchServices();
+      },
+      handleProductChange() {
+        console.log('[Service Validation Model] Service selection changed:', this.get('selectedService'));
+        this.trigger('rerender');
+      },
+      handleDataChange() {
+        console.log('[Service Validation Model] Stripe key or services updated.');
+        if (this.get('selectedService')) {
+          this.trigger('rerender');
+        }
+      },
+      fetchStripeKey() {
+        fetch('/api/stripe/key')
+          .then(response => response.json())
+          .then(data => {
+            if (data && data.public_key) {
+              this.set('stripeKey', data.public_key);
+            } else {
+              this.set('stripeKey', null);
+            }
+          }).catch(err => {
+            this.set('stripeKey', null);
+          });
+      },
+      fetchServices() {
+        fetch('/api/product/all')
+          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
+          .then(data => {
+            const services = data.map(service => ({
+              id: service.id || Date.now() + Math.random(),
+              title: service.name || 'Untitled Service',
+              price: Math.max(0, Number(service.price)) || 0,
+              description: service.description || '',
+              currency: service.currency
+            }));
+            this.set('services', services);
+            this.updateTraits();
+          }).catch(error => {
+            this.set('services', []);
+            this.updateTraits();
+          });
+        },
+      updateTraits() {
+        const services = this.get('services') || [];
+        const trait = this.getTrait('selectedService');
+        if (trait) {
+          const options = services.map(service => ({
+            id: service.id.toString(),
+            name: `${service.title} (${formatPrice(service.price, service.currency)})`,
+            value: service.id.toString()
+          }));
+          options.unshift({ id: '', name: 'Select a Service...', value: '' });
+          trait.set('options', options);
+        }
+      }
+    },
+    view: {
+      init() {
+        this.listenTo(this.model, 'change:selectedService change:stripeKey change:services rerender', this.render);
+      },
+      onRender() {
+        const model = this.model;
+        const componentRootEl = this.el;
+        const stripeKey = model.get('stripeKey');
+        const selectedServiceId = model.get('selectedService');
+        const services = model.get('services') || [];
+        const selectedService = services.find(s => s.id?.toString() === selectedServiceId);
+
+        let htmlContent;
+        if (!selectedServiceId) {
+          htmlContent = 'Please select a service from the settings panel.';
+        } else if (!selectedService) {
+          htmlContent = '<div class="text-red-600">Selected service data not found. Please re-select.</div>';
+        } else {
+          htmlContent = serviceValidation(selectedService);
+        }
+        componentRootEl.innerHTML = htmlContent;
+
+        if (!stripeKey || !selectedService) return;
+
+        // Initialize address validation
+        const address1Input = componentRootEl.querySelector('#address1');
+        const cityInput = componentRootEl.querySelector('#city');
+        const stateInput = componentRootEl.querySelector('#state');
+        const zip5Input = componentRootEl.querySelector('#zip5');
+        const checkBtn = componentRootEl.querySelector('#check-availability');
+        const feedbackDiv = componentRootEl.querySelector('#address-feedback');
+
+        function setFeedback(msg, color) {
+          feedbackDiv.textContent = msg;
+          feedbackDiv.style.color = color;
+        }
+
+        checkBtn.addEventListener('click', () => {
+        
+          const address1 = address1Input.value.trim();
+          const city = cityInput.value.trim();
+          const state = stateInput.value.trim();
+          const zip5 = zip5Input.value.trim();
+          setFeedback('⏳ Checking...', '#2563eb');
+          if (!address1 || !city || !state || !zip5) {
+            setFeedback('Please complete all address fields.', '#b91c1c');
+            return;
+          }
+          fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: {
+                address1,
+                address2: null,
+                city,
+                state,
+                zip5,
+                zip4: null
+              },
+              zone_id: 1
+            })
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('API error');
+            }
+            return response.json();
+          })
+          .then(data => {
+            if (data.inside_zone) {
+              setFeedback('✅ Address is in service area.', '#16a34a');
+            } else {
+              setFeedback('❌ Address is outside the service area.', '#b91c1c');
+            }
+          });
+        });
+
+      }
+    }
+  });
+}
+
+
+
+export { formatPrice };
+export default components;

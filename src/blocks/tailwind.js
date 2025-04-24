@@ -673,7 +673,21 @@ const sources = [
     label: m3s,
     category: 'Commerce',
     content: {type: 'Checkout 2 Step'},
-  } 
+  },
+  {
+    id: 'Service Signup',
+    class: '',
+    label: m3s,
+    category: 'Commerce',
+    content: {type: 'Service Signup'},
+  },
+  {
+    id: 'Service Validation',
+    class: '',
+    label: m3s,
+    category: 'Commerce',
+    content: {type: 'Service Validation'},
+  }
 ]
 
 export default (editor, options = {}) => {
