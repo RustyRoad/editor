@@ -451,7 +451,7 @@ const components = (editor, opts = {}) => {
       defaults: {
         tagName: 'div',
         attributes: { 'data-gjs-type': 'service-validation' },
-        content: 'Select a service for validation...',
+        content: serviceValidation,
         droppable: false,
         stylable: [],
         traits: [
