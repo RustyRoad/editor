@@ -20,219 +20,7 @@ const formatPrice = (amount, currency) => {
 const components = (editor, opts = {}) => {
   const components = editor.DomComponents;
 
-  // Register Service Validation component
-  components.addType('service-validation', {
-    model: {
-      defaults: {
-        component: serviceValidation,
-        traits: [
-          {
-            type: 'select',
-            label: 'Select Service',
-            name: 'selectedService',
-            options: [],
-            changeProp: 1
-          },
-          {
-            type: 'text',
-            name: 'address1',
-            label: 'Street Address',
-          },
-          {
-            type: 'text',
-            name: 'city',
-            label: 'City',
-          },
-          {
-            type: 'text',
-            name: 'state',
-            label: 'State',
-          },
-          {
-            type: 'text',
-            name: 'zip5',
-            label: 'ZIP Code',
-          }
-        ],
-        stylable: true,
-        resizable: true,
-        droppable: false,
-        services: [],
-      },
-      init() {
-        this.listenTo(this, 'change:selectedService', this.handleServiceChange);
-        this.fetchServices();
-      },
-      handleServiceChange() {
-        this.trigger('rerender');
-      },
-      fetchServices() {
-        fetch('/api/product/all')
-          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
-          .then(data => {
-            const services = data.map(service => ({
-              id: service.id || Date.now() + Math.random(),
-              title: service.name || 'Untitled Service',
-              price: Math.max(0, Number(service.price)) || 0,
-              description: service.description || '',
-              currency: service.currency
-            }));
-            this.set('services', services);
-            this.updateTraits();
-          }).catch(error => {
-            this.set('services', []);
-            this.updateTraits();
-          });
-      },
-      updateTraits() {
-        const services = this.get('services') || [];
-        const trait = this.getTrait('selectedService');
-        if (trait) {
-          const options = services.map(service => ({
-            id: service.id.toString(),
-            name: `${service.title} (${formatPrice(service.price, service.currency)})`,
-            value: service.id.toString()
-          }));
-          options.unshift({ id: '', name: 'Select a Service...', value: '' });
-          trait.set('options', options);
-        }
-      }
-    },
-    view: {
-      init() {
-        this.listenTo(this.model, 'change:address1 change:city change:state change:zip5', this.handleAddressChange);
-      },
-      handleAddressChange() {
-        const address1 = this.model.get('address1');
-        const city = this.model.get('city');
-        const state = this.model.get('state');
-        const zip5 = this.model.get('zip5');
-        
-        if (address1 && city && state && zip5) {
-          this.validateAddress(address1, city, state, zip5);
-        }
-      },
-      async validateAddress(address1, city, state, zip5) {
-        try {
-          const resp = await fetch('/api/geocode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              address: {
-                address1,
-                address2: null,
-                city,
-                state,
-                zip5,
-                zip4: null
-              },
-              zone_id: 1
-            })
-          });
 
-          if (!resp.ok) throw new Error('API error');
-          
-          const data = await resp.json();
-          this.model.set('validationResult', data.inside_zone ? 'valid' : 'invalid');
-        } catch (error) {
-          this.model.set('validationResult', 'error');
-          console.error('Address validation error:', error);
-        }
-      },
-      onRender() {
-        const el = this.el;
-        const selectedServiceId = this.model.get('selectedService');
-        const services = this.model.get('services') || [];
-        const selectedService = services.find(s => s.id?.toString() === selectedServiceId);
-        
-        if (!selectedServiceId) {
-          el.innerHTML = 'Please select a service from the settings panel. you idiot';
-        } else if (!selectedService) {
-          el.innerHTML = '<div class="text-red-600">Selected service not found. Please re-select.</div>';
-        } else {
-          el.innerHTML = serviceValidation(selectedService);
-        }
-        
-        const address1Input = el.querySelector('#address1');
-        const cityInput = el.querySelector('#city');
-        const stateInput = el.querySelector('#state');
-        const zip5Input = el.querySelector('#zip5');
-        const checkBtn = el.querySelector('#check-availability');
-        const feedbackDiv = el.querySelector('#address-feedback');
-
-        if (!checkBtn || !feedbackDiv) return;
-
-        function setFeedback(msg, color) {
-          feedbackDiv.textContent = msg;
-          feedbackDiv.style.color = color;
-        }
-
-        const handleCheckAvailability = async () => {
-          const address1 = address1Input.value.trim();
-          const city = cityInput.value.trim();
-          const state = stateInput.value.trim();
-          const zip5 = zip5Input.value.trim();
-
-          setFeedback('⏳ Checking...', '#2563eb');
-
-          if (!address1 || !city || !state || !zip5) {
-            const missingFields = [];
-            if (!address1) missingFields.push('Street Address');
-            if (!city) missingFields.push('City');
-            if (!state) missingFields.push('State');
-            if (!zip5) missingFields.push('ZIP Code');
-            
-            setFeedback(`Please complete: ${missingFields.join(', ')}`, '#b91c1c');
-            return;
-          }
-
-          try {
-            const resp = await fetch('/api/geocode', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                address: {
-                  address1,
-                  address2: null,
-                  city,
-                  state,
-                  zip5,
-                  zip4: null
-                },
-                zone_id: 1
-              })
-            });
-
-            if (!resp.ok) throw new Error('API error');
-            
-            const data = await resp.json();
-            if (data.inside_zone) {
-              setFeedback('✅ Address is in service area', '#16a34a');
-            } else {
-              setFeedback('❌ Address is outside service area', '#b91c1c');
-            }
-          } catch (error) {
-            setFeedback('⚠️ Error validating address', '#b91c1c');
-            console.error('Validation error:', error);
-          }
-        };
-
-        checkBtn.addEventListener('click', handleCheckAvailability);
-
-        [address1Input, cityInput, stateInput, zip5Input].forEach(input => {
-          input?.addEventListener('input', () => setFeedback('', ''));
-        });
-
-        // Cleanup event listeners when component is removed
-        this.listenTo(this.model, 'destroy', () => {
-          checkBtn.removeEventListener('click', handleCheckAvailability);
-          [address1Input, cityInput, stateInput, zip5Input].forEach(input => {
-            input?.removeEventListener('input', () => setFeedback('', ''));
-          });
-        });
-      }
-    }
-  });
 
   // Register other existing components
   components.addType('webinar-checkout-1', {
@@ -823,6 +611,19 @@ const components = (editor, opts = {}) => {
       }
     }
   });
+
+
+    // Register Service Validation component
+    components.addType('service-validation', {
+      model: {
+        defaults: {
+          component: serviceValidation,
+          stylable: true
+        }
+
+      }
+    });
+  
 }
 
 
