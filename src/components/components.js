@@ -98,7 +98,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('http://192.168.50.14/api/stripe/key')
+        fetch('/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -111,7 +111,7 @@ const components = (editor, opts = {}) => {
           });
         },
       fetchProducts() {
-        fetch('http://192.168.50.14/api/products')
+        fetch('/api/products')
         .then(response => response.text().then(text => text ? JSON.parse(text) : []))
         .then(data => {
             const products = data.map(product => ({
@@ -173,7 +173,7 @@ const components = (editor, opts = {}) => {
             
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', {
+                const res = await fetch('/api/stripe/create-checkout-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -243,7 +243,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('http://192.168.50.14/api/stripe/key')
+        fetch('/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -256,7 +256,7 @@ const components = (editor, opts = {}) => {
           });
       },
       fetchProducts() {
-        fetch('http://192.168.50.14/api/product/all')
+        fetch('/api/product/all')
           .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
             const products = data.map(product => ({
@@ -373,7 +373,7 @@ const components = (editor, opts = {}) => {
           }
 
           try {
-            const resp = await fetch('http://192.168.50.14/api/geocode', {
+            const resp = await fetch('/api/geocode', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -438,7 +438,7 @@ const components = (editor, opts = {}) => {
 
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', {
+                const res = await fetch('/api/stripe/create-checkout-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -554,7 +554,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('http://192.168.50.14/api/stripe/key')
+        fetch('/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -568,7 +568,7 @@ const components = (editor, opts = {}) => {
       },
       fetchServices() {
         alert('Fetching services...');
-        return fetch('http://192.168.50.14/api/product/all')
+        return fetch('/api/product/all')
           .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
             const services = data.map(service => ({
@@ -692,7 +692,7 @@ const components = (editor, opts = {}) => {
             setFeedback('Please complete all address fields.', '#b91c1c');
             return;
           }
-          fetch('http://192.168.50.14/api/geocode', {
+          fetch('/api/geocode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
