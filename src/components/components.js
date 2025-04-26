@@ -3,7 +3,6 @@ import embeddedCheckout from "./embedded-checkout";
 import serviceSignup from "./service-signup";
 import serviceValidation from "./service-validation";
 import { loadStripe } from '@stripe/stripe-js';
-const DomComponents = grapesjs.DomComponents;
 
 // Helper function defined within the main export scope
 const formatPrice = (amount, currency) => {
@@ -289,7 +288,14 @@ const components = (editor, opts = {}) => {
       },
 
       toJSON(opts = {}) {
-        const obj = this.constructor.prototype.toJSON.apply(this, [opts]);
+        const obj = {
+          attributes: this.getAttributes(),
+          components: this.get('components').toJSON(opts),
+          // Include other important model properties
+          stripeKey: this.get('stripeKey'),
+          products: this.get('products'),
+          traits: this.get('traits')
+        };
         if (this.view && this.view.el) {
           obj.renderedHTML = this.view.el.innerHTML;
           // Capture form field values
@@ -547,7 +553,14 @@ const components = (editor, opts = {}) => {
       },
 
       toJSON(opts = {}) {
-        const obj = this.constructor.prototype.toJSON.apply(this, [opts]);
+        const obj = {
+          attributes: this.getAttributes(),
+          components: this.get('components').toJSON(opts),
+          // Include other important model properties
+          stripeKey: this.get('stripeKey'),
+          services: this.get('services'),
+          traits: this.get('traits')
+        };
         if (this.view && this.view.el) {
           obj.renderedHTML = this.view.el.innerHTML;
           // Capture validation state
