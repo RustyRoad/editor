@@ -125,7 +125,11 @@ export default (editor, opts = {}) => {
 
     cm.add('get-tailwindCss', {
         run(editor, sender, options = {}) {
-            sender?.set && sender.set('active', 0);
+            try {
+                sender?.set && sender.set('active', 0);
+            } catch (e) {
+                console.error("Error setting sender active state:", e);
+            }
             const {
                 callback = twcss => console.log(twcss)
             } = options
@@ -139,5 +143,14 @@ export default (editor, opts = {}) => {
             });
             callback(twcss);
         }
-    })
+    });
+
+    cm.add('export-html-to-console', {
+        run(editor) {
+            const html = editor.getHtml();
+            console.log('--- Editor HTML ---');
+            console.log(html);
+            console.log('-------------------');
+        }
+    });
 }

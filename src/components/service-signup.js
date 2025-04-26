@@ -165,7 +165,7 @@ const formatPrice = (amount, currency) => {
         }
 
         try {
-          const resp = await fetch('/api/check-availability', {
+          const resp = await fetch('http://192.168.50.14/api/check-availability', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

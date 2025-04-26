@@ -102,7 +102,7 @@ export default (service = {}) => {
         }
       
         try {
-          const resp = await fetch('/api/geocode', {
+          const resp = await fetch('http://192.168.50.14/api/geocode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

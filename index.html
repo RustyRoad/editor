@@ -144,22 +144,34 @@
     editor.Commands.add('savePage', {
         run(editor, sender) {
             sender.set('active', 0); // turn off the button
-            // get html from editor
-            var html = editor.getHtml();
-            // create object to save to database
-            const now = Date.now();  // milliseconds since 1970-01-01T00:00:00Z
-            const HtmlGrapesJs = {
-                html_content: html,
-                created_at: Math.floor(now / 1000),  // convert to seconds
-                updated_at: Math.floor(now / 1000),  // convert to seconds
-                associated_user_id: 1,
-                metadata: JSON.stringify({
-                    title: 'test',
-                    description: 'test',
-                    keywords: 'test',
-                }),
-            };
-            saveHtml(HtmlGrapesJs);
+            
+            // Get the full GrapesJS project state
+            editor.store().then(state => {
+                // create object to save to database
+                const now = Date.now();  // milliseconds since 1970-01-01T00:00:00Z
+                const GrapesJsProjectState = {
+                    // Save the full state, not just HTML
+                    project_state: JSON.stringify(state),
+                    created_at: Math.floor(now / 1000),  // convert to seconds
+                    updated_at: Math.floor(now / 1000),  // convert to seconds
+                    associated_user_id: 1,
+                    metadata: JSON.stringify({
+                        title: 'test',
+                        description: 'test',
+                        keywords: 'test',
+                    }),
+                };
+                // Use a different function to save the project state if needed,
+                // or modify saveHtml to handle the new object structure.
+                // For now, let's assume saveHtml can handle this object.
+                const html = editor.getHtml(); // get html from grapesjs
+                console.log('GrapesJsProjectState:', GrapesJsProjectState);
+                console.log('HTML:', html); // log the HTML content
+ 
+            }).catch(error => {
+                console.error('Error storing GrapesJS state:', error);
+                sender.set('active', 1); // turn on the button
+            });
         }
     });
 

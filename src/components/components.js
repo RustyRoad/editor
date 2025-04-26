@@ -98,7 +98,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -111,7 +111,7 @@ const components = (editor, opts = {}) => {
           });
         },
       fetchProducts() {
-        fetch('/api/products')
+        fetch('http://192.168.50.14/api/products')
         .then(response => response.text().then(text => text ? JSON.parse(text) : []))
         .then(data => {
             const products = data.map(product => ({
@@ -173,7 +173,7 @@ const components = (editor, opts = {}) => {
             
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('/api/stripe/create-checkout-session', {
+                const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -243,7 +243,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -256,7 +256,7 @@ const components = (editor, opts = {}) => {
           });
       },
       fetchProducts() {
-        fetch('/api/product/all')
+        fetch('http://192.168.50.14/api/product/all')
           .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
             const products = data.map(product => ({
@@ -373,7 +373,7 @@ const components = (editor, opts = {}) => {
           }
 
           try {
-            const resp = await fetch('/api/geocode', {
+            const resp = await fetch('http://192.168.50.14/api/geocode', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -438,7 +438,7 @@ const components = (editor, opts = {}) => {
 
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('/api/stripe/create-checkout-session', {
+                const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -492,8 +492,8 @@ const components = (editor, opts = {}) => {
       init() {
         // Initialize with empty content
         this.set('content', '');
-        
-        // Load services first if needed
+
+        // Load services first if needed, then load content
         if (!this.get('services')?.length) {
           this.fetchServices().finally(() => {
             this.loadContent();
@@ -501,45 +501,27 @@ const components = (editor, opts = {}) => {
         } else {
           this.loadContent();
         }
-        
+
         this.listenTo(this, 'change:selectedService', this.handleProductChange);
         this.listenTo(this, 'change:stripeKey', this.handleDataChange);
         this.listenTo(this, 'change:services', this.handleDataChange);
 
         this.fetchStripeKey();
-        this.fetchServices();
+        // fetchServices is called above if needed
       },
       handleProductChange() {
         const selectedService = this.get('selectedService');
         console.log('[Service Validation] Service changed to:', selectedService);
-        
+
         // Clear previous rendered state
         this.set('renderedHTML', null);
-        
-        // Load new content and wait for render
-        this.loadContentAndCapture().then(() => {
-          console.log('[Service Validation] HTML updated for service:', selectedService);
-        });
+
+        // Load new content, the HTML capture happens in onRender
+        this.loadContent();
       },
-      
-      loadContentAndCapture() {
-        return new Promise(resolve => {
-          this.loadContent();
-          
-          // Wait for next tick to ensure render completes
-          setTimeout(() => {
-            if (this.view?.el) {
-              this.set({
-                renderedHTML: this.view.el.innerHTML,
-                lastSavedService: this.get('selectedService')
-              });
-            }
-            resolve();
-          }, 50); // Slightly longer delay to ensure render
-        });
-      },
+
       handleDataChange() {
-        console.log('[Service Validation Model] Stripe key or services updated.');
+        console.log('[Service Validation Model] Stripe key or products updated.');
         this.loadContent();
         if (this.get('selectedService')) {
           this.trigger('rerender');
@@ -550,28 +532,29 @@ const components = (editor, opts = {}) => {
         const selectedService = this.get('selectedService');
         const services = this.get('services') || [];
         const serviceData = services.find(s => s.id?.toString() === selectedService);
-        
-        // Never use saved HTML here - always generate fresh
-        if (selectedService && serviceData) {
-          this.set('content', serviceValidation(serviceData));
-        } else {
-          this.set('content', 'Please select a service from settings');
+
+        // Use saved HTML if available and matches the selected service
+        const savedHTML = this.get('renderedHTML');
+        const lastSavedService = this.get('lastSavedService');
+
+        if (savedHTML && lastSavedService === selectedService) {
+            this.set('content', savedHTML);
+            return;
         }
-        
-        // Otherwise generate content from selected service
+
         if (selectedService && serviceData) {
           this.set('content', serviceValidation(serviceData));
         } else {
           this.set('content', 'Please select a service from the settings panel.');
         }
-        
+
         // Trigger immediate render if we have a selected service
         if (selectedService) {
           this.trigger('rerender');
         }
       },
       fetchStripeKey() {
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -585,7 +568,7 @@ const components = (editor, opts = {}) => {
       },
       fetchServices() {
         alert('Fetching services...');
-        return fetch('/api/product/all')
+        return fetch('http://192.168.50.14/api/product/all')
           .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
             const services = data.map(service => ({
@@ -616,10 +599,8 @@ const components = (editor, opts = {}) => {
         }
       },
 
-      async toJSON(opts = {}) {
-        // Ensure we have the latest rendered HTML
-        await this.loadContentAndCapture();
-        
+      toJSON(opts = {}) {
+        // Capture current state directly from the model
         const obj = {
           attributes: this.getAttributes(),
           components: this.get('components').toJSON(opts),
@@ -629,19 +610,21 @@ const components = (editor, opts = {}) => {
           template: 'serviceValidation',
           selectedService: this.get('selectedService')
         };
-        
-        if (this.view && this.view.el) {
-          obj.renderedHTML = this.view.el.innerHTML;
-          const feedbackEl = this.view.el.querySelector('#address-feedback');
+
+        // Include rendered HTML and form values if available
+        // These are captured in the view's onRender method
+        if (this.get('renderedHTML')) {
+          obj.renderedHTML = this.get('renderedHTML');
+          const feedbackEl = this.view?.el?.querySelector('#address-feedback');
           if (feedbackEl) {
             obj.validationState = {
               message: feedbackEl.textContent,
               color: feedbackEl.style.color
             };
           }
-          const inputs = this.view.el.querySelectorAll('input');
+          const inputs = this.view?.el?.querySelectorAll('input');
           obj.formValues = {};
-          inputs.forEach(input => {
+          inputs?.forEach(input => {
             obj.formValues[input.id] = input.value;
           });
         }
@@ -651,6 +634,18 @@ const components = (editor, opts = {}) => {
     view: {
       init() {
         this.listenTo(this.model, 'change:selectedService change:stripeKey change:services rerender', this.render);
+        // Listen to the 'render' event to capture HTML after the view updates
+        this.listenTo(this, 'render', this.captureRenderedHTML);
+      },
+
+      captureRenderedHTML() {
+          // Capture the innerHTML after the view has rendered
+          if (this.el) {
+              this.model.set({
+                renderedHTML: this.el.innerHTML,
+                lastSavedService: this.model.get('selectedService')
+              });
+          }
       },
       onRender() {
         const model = this.model;
@@ -660,15 +655,16 @@ const components = (editor, opts = {}) => {
         const services = model.get('services') || [];
         const selectedService = services.find(s => s.id?.toString() === selectedServiceId);
 
-        let htmlContent;
-        if (!selectedServiceId) {
-          htmlContent = 'Please select a service from the settings panel.';
-        } else if (!selectedService) {
-          htmlContent = '<div class="text-red-600">Selected service data not found. Please re-select.</div>';
-        } else {
-          htmlContent = serviceValidation(selectedService);
-        }
-        componentRootEl.innerHTML = htmlContent;
+        // The content is already set in the model's loadContent method
+        // We just need to ensure the view updates based on model changes
+        // The actual HTML content is now managed by the model's 'content' attribute
+        // The onRender method's primary role is to initialize event listeners and external libraries
+
+        // Re-initialize address validation and Stripe if needed after render
+        // This part of the onRender logic seems correct for initializing interactive elements
+        // based on the rendered HTML content.
+
+        // No need to set innerHTML here, it's handled by the framework based on model.get('content')
 
         if (!stripeKey || !selectedService) return;
 
@@ -696,7 +692,7 @@ const components = (editor, opts = {}) => {
             setFeedback('Please complete all address fields.', '#b91c1c');
             return;
           }
-          fetch('/api/geocode', {
+          fetch('http://192.168.50.14/api/geocode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -743,7 +739,6 @@ const components = (editor, opts = {}) => {
     });
   
 }
-
 
 
 export { formatPrice };
