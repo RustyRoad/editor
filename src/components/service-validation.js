@@ -59,9 +59,6 @@ export default (service = {}) => {
     </div>
   </div>
   <script>
-  </script>
-  
-  
   (function() {
       const container = document.querySelector('.service-validation');
       if (!container) return;
@@ -143,5 +140,8 @@ export default (service = {}) => {
         setSubmitEnabled(false);
       });
   })()
+  </script>
+  
+  
   `;
 };
