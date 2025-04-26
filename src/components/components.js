@@ -291,14 +291,14 @@ const components = (editor, opts = {}) => {
         const obj = {
           attributes: this.getAttributes(),
           components: this.get('components').toJSON(opts),
-          // Include other important model properties
           stripeKey: this.get('stripeKey'),
           products: this.get('products'),
-          traits: this.get('traits')
+          traits: this.get('traits'),
+          template: 'serviceSignup'
         };
+        
         if (this.view && this.view.el) {
           obj.renderedHTML = this.view.el.innerHTML;
-          // Capture form field values
           const inputs = this.view.el.querySelectorAll('input');
           obj.formValues = {};
           inputs.forEach(input => {
@@ -472,7 +472,8 @@ const components = (editor, opts = {}) => {
       defaults: {
         tagName: 'div',
         attributes: { 'data-gjs-type': 'service-validation' },
-        content: serviceValidation,
+        // Initialize with empty content, will be set in init()
+        content: '',
         droppable: false,
         stylable: [],
         traits: [
@@ -489,6 +490,13 @@ const components = (editor, opts = {}) => {
         title: 'Service Validation'
       },
       init() {
+        // If we have saved HTML, use that, otherwise use the template function
+        if (this.get('renderedHTML')) {
+          this.set('content', this.get('renderedHTML'));
+        } else {
+          this.set('content', serviceValidation(this.get('selectedService') || {}));
+        }
+        
         this.listenTo(this, 'change:selectedService', this.handleProductChange);
         this.listenTo(this, 'change:stripeKey', this.handleDataChange);
         this.listenTo(this, 'change:services', this.handleDataChange);
@@ -556,14 +564,14 @@ const components = (editor, opts = {}) => {
         const obj = {
           attributes: this.getAttributes(),
           components: this.get('components').toJSON(opts),
-          // Include other important model properties
           stripeKey: this.get('stripeKey'),
           services: this.get('services'),
-          traits: this.get('traits')
+          traits: this.get('traits'),
+          template: 'serviceValidation'
         };
+        
         if (this.view && this.view.el) {
           obj.renderedHTML = this.view.el.innerHTML;
-          // Capture validation state
           const feedbackEl = this.view.el.querySelector('#address-feedback');
           if (feedbackEl) {
             obj.validationState = {
@@ -571,7 +579,6 @@ const components = (editor, opts = {}) => {
               color: feedbackEl.style.color
             };
           }
-          // Capture form values
           const inputs = this.view.el.querySelectorAll('input');
           obj.formValues = {};
           inputs.forEach(input => {
