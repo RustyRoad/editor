@@ -585,7 +585,7 @@ const components = (editor, opts = {}) => {
       },
       fetchServices() {
         alert('Fetching services...');
-        fetch('/api/product/all')
+        return fetch('/api/product/all')
           .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
             const services = data.map(service => ({
