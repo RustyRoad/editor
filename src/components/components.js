@@ -285,6 +285,20 @@ const components = (editor, opts = {}) => {
           options.unshift({ id: '', name: 'Select a Service...', value: '' });
           trait.set('options', options);
         }
+      },
+
+      toJSON(opts = {}) {
+        const obj = DomComponents.getType('default').model.prototype.toJSON.apply(this, [opts]);
+        if (this.view && this.view.el) {
+          obj.renderedHTML = this.view.el.innerHTML;
+          // Capture form field values
+          const inputs = this.view.el.querySelectorAll('input');
+          obj.formValues = {};
+          inputs.forEach(input => {
+            obj.formValues[input.id] = input.value;
+          });
+        }
+        return obj;
       }
     },
     view: {
@@ -529,6 +543,28 @@ const components = (editor, opts = {}) => {
           options.unshift({ id: '', name: 'Select a Service...', value: '' });
           trait.set('options', options);
         }
+      },
+
+      toJSON(opts = {}) {
+        const obj = DomComponents.getType('default').model.prototype.toJSON.apply(this, [opts]);
+        if (this.view && this.view.el) {
+          obj.renderedHTML = this.view.el.innerHTML;
+          // Capture validation state
+          const feedbackEl = this.view.el.querySelector('#address-feedback');
+          if (feedbackEl) {
+            obj.validationState = {
+              message: feedbackEl.textContent,
+              color: feedbackEl.style.color
+            };
+          }
+          // Capture form values
+          const inputs = this.view.el.querySelectorAll('input');
+          obj.formValues = {};
+          inputs.forEach(input => {
+            obj.formValues[input.id] = input.value;
+          });
+        }
+        return obj;
       }
     },
     view: {
