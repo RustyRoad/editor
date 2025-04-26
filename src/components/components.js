@@ -490,11 +490,17 @@ const components = (editor, opts = {}) => {
         title: 'Service Validation'
       },
       init() {
-        // Initialize with empty content first
+        // Initialize with empty content
         this.set('content', '');
         
-        // Then load either saved HTML or generate from selected service
-        this.loadContent();
+        // Load services first if needed
+        if (!this.get('services')?.length) {
+          this.fetchServices().finally(() => {
+            this.loadContent();
+          });
+        } else {
+          this.loadContent();
+        }
         
         this.listenTo(this, 'change:selectedService', this.handleProductChange);
         this.listenTo(this, 'change:stripeKey', this.handleDataChange);
@@ -504,8 +510,33 @@ const components = (editor, opts = {}) => {
         this.fetchServices();
       },
       handleProductChange() {
-        console.log('[Service Validation Model] Service selection changed:', this.get('selectedService'));
-        this.trigger('rerender');
+        const selectedService = this.get('selectedService');
+        console.log('[Service Validation] Service changed to:', selectedService);
+        
+        // Clear previous rendered state
+        this.set('renderedHTML', null);
+        
+        // Load new content and wait for render
+        this.loadContentAndCapture().then(() => {
+          console.log('[Service Validation] HTML updated for service:', selectedService);
+        });
+      },
+      
+      loadContentAndCapture() {
+        return new Promise(resolve => {
+          this.loadContent();
+          
+          // Wait for next tick to ensure render completes
+          setTimeout(() => {
+            if (this.view?.el) {
+              this.set({
+                renderedHTML: this.view.el.innerHTML,
+                lastSavedService: this.get('selectedService')
+              });
+            }
+            resolve();
+          }, 50); // Slightly longer delay to ensure render
+        });
       },
       handleDataChange() {
         console.log('[Service Validation Model] Stripe key or services updated.');
@@ -518,14 +549,25 @@ const components = (editor, opts = {}) => {
       loadContent() {
         const selectedService = this.get('selectedService');
         const services = this.get('services') || [];
-        const serviceData = services.find(s => s.id?.toString() === selectedService) || {};
+        const serviceData = services.find(s => s.id?.toString() === selectedService);
         
-        if (this.get('renderedHTML')) {
-          this.set('content', this.get('renderedHTML'));
-        } else if (selectedService && serviceData.id) {
+        // Never use saved HTML here - always generate fresh
+        if (selectedService && serviceData) {
+          this.set('content', serviceValidation(serviceData));
+        } else {
+          this.set('content', 'Please select a service from settings');
+        }
+        
+        // Otherwise generate content from selected service
+        if (selectedService && serviceData) {
           this.set('content', serviceValidation(serviceData));
         } else {
           this.set('content', 'Please select a service from the settings panel.');
+        }
+        
+        // Trigger immediate render if we have a selected service
+        if (selectedService) {
+          this.trigger('rerender');
         }
       },
       fetchStripeKey() {
@@ -574,11 +616,9 @@ const components = (editor, opts = {}) => {
         }
       },
 
-      toJSON(opts = {}) {
-        // Force update content before saving
-        if (this.view && this.view.el) {
-          this.set('renderedHTML', this.view.el.innerHTML);
-        }
+      async toJSON(opts = {}) {
+        // Ensure we have the latest rendered HTML
+        await this.loadContentAndCapture();
         
         const obj = {
           attributes: this.getAttributes(),
