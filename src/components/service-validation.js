@@ -1,6 +1,6 @@
 import { formatPrice } from './components';
 
-const serviceValidation = (service = {}) => {
+export default (service = {}) => {
   // Basic validation
   if (!service.id || typeof service.price === 'undefined' || !service.title) {
     console.error("[Checkout Template] Invalid service data", { service });
@@ -58,7 +58,7 @@ const serviceValidation = (service = {}) => {
       <p class="text-sm text-gray-500">Once validated, you can proceed to checkout</p>
     </div>
   </div>
-  `;
+  <script>
 
   // Initialize after DOM is ready
   document.addEventListener('DOMContentLoaded', function() {
@@ -99,7 +99,7 @@ const serviceValidation = (service = {}) => {
         if (!address.state) missingFields.push('State');
         if (!address.zip5) missingFields.push('ZIP Code');
         
-        setFeedback(`Please complete: ${missingFields.join(', ')}`, '#b91c1c');
+        setFeedback("⚠️ Please fill in all fields: " + missingFields.join(', '), '#b91c1c');
         return;
       }
 
@@ -142,5 +142,6 @@ const serviceValidation = (service = {}) => {
     });
   });
 };
-
-export default serviceValidation;
+  </script>
+  `;
+}
