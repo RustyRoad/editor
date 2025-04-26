@@ -676,10 +676,26 @@ const components = (editor, opts = {}) => {
         const checkBtn = componentRootEl.querySelector('#check-availability');
         const feedbackDiv = componentRootEl.querySelector('#address-feedback');
 
+        const submitBtn = componentRootEl.querySelector('#submit-button');
+        
         function setFeedback(msg, color) {
           feedbackDiv.textContent = msg;
           feedbackDiv.style.color = color;
         }
+
+        function setSubmitEnabled(enabled) {
+          if (submitBtn) {
+            if (enabled) {
+              submitBtn.removeAttribute('disabled');
+              submitBtn.classList.remove('opacity-50');
+            } else {
+              submitBtn.setAttribute('disabled', 'disabled');
+              submitBtn.classList.add('opacity-50');
+            }
+          }
+        }
+
+        setSubmitEnabled(false);
 
         checkBtn.addEventListener('click', () => {
         
