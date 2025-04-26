@@ -59,91 +59,89 @@ export default (service = {}) => {
     </div>
   </div>
   <script>
-    (function() {
-      // Initialize after DOM is ready
-      document.addEventListener('DOMContentLoaded', function() {
-        const container = document.querySelector('.service-validation');
-        if (!container) return;
+  </script>
+  
+  
+  (function() {
+      const container = document.querySelector('.service-validation');
+      if (!container) return;
+    
+      const address1Input = container.querySelector('#address1');
+      const cityInput = container.querySelector('#city');
+      const stateInput = container.querySelector('#state');
+      const zip5Input = container.querySelector('#zip5');
+      const checkBtn = container.querySelector('#check-availability');
+      const feedbackDiv = container.querySelector('#address-feedback');
+    
+      if (!checkBtn || !feedbackDiv) {
+        console.error('Required elements not found');
+        return;
+      }
+    
+      function setFeedback(msg, color) {
+        feedbackDiv.textContent = msg;
+        feedbackDiv.style.color = color;
+      }
+    
+      async function handleCheckAvailability() {
+        const address = {
+          address1: address1Input.value.trim(),
+          city: cityInput.value.trim(),
+          state: stateInput.value.trim(),
+          zip5: zip5Input.value.trim()
+        };
       
-        const address1Input = container.querySelector('#address1');
-        const cityInput = container.querySelector('#city');
-        const stateInput = container.querySelector('#state');
-        const zip5Input = container.querySelector('#zip5');
-        const checkBtn = container.querySelector('#check-availability');
-        const feedbackDiv = container.querySelector('#address-feedback');
+        setFeedback('⏳ Checking...', '#2563eb');
       
-        if (!checkBtn || !feedbackDiv) {
-          console.error('Required elements not found');
+        if (!address.address1 || !address.city || !address.state || !address.zip5) {
+          const missingFields = [];
+          if (!address.address1) missingFields.push('Street Address');
+          if (!address.city) missingFields.push('City');
+          if (!address.state) missingFields.push('State');
+          if (!address.zip5) missingFields.push('ZIP Code');
+  
+          setFeedback("⚠️ Please fill in all fields: " + missingFields.join(', '), '#b91c1c');
           return;
         }
       
-        function setFeedback(msg, color) {
-          feedbackDiv.textContent = msg;
-          feedbackDiv.style.color = color;
-        }
-      
-        async function handleCheckAvailability() {
-          const address = {
-            address1: address1Input.value.trim(),
-            city: cityInput.value.trim(),
-            state: stateInput.value.trim(),
-            zip5: zip5Input.value.trim()
-          };
+        try {
+          const resp = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: {
+                address1: address.address1,
+                address2: null,
+                city: address.city,
+                state: address.state,
+                zip5: address.zip5,
+                zip4: null
+              },
+              zone_id: 1
+            })
+          });
         
-          setFeedback('⏳ Checking...', '#2563eb');
-        
-          if (!address.address1 || !address.city || !address.state || !address.zip5) {
-            const missingFields = [];
-            if (!address.address1) missingFields.push('Street Address');
-            if (!address.city) missingFields.push('City');
-            if (!address.state) missingFields.push('State');
-            if (!address.zip5) missingFields.push('ZIP Code');
-
-            setFeedback("⚠️ Please fill in all fields: " + missingFields.join(', '), '#b91c1c');
-            return;
+          if (!resp.ok) throw new Error('API error');
+  
+          const data = await resp.json();
+          if (data.inside_zone) {
+            setFeedback('✅ Address is valid for service', '#16a34a');
+            localStorage.setItem("validatedAddress", JSON.stringify(address));
+          } else {
+            setFeedback('❌ Address is not serviceable', '#b91c1c');
           }
-        
-          try {
-            const resp = await fetch('/api/geocode', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                address: {
-                  address1: address.address1,
-                  address2: null,
-                  city: address.city,
-                  state: address.state,
-                  zip5: address.zip5,
-                  zip4: null
-                },
-                zone_id: 1
-              })
-            });
-          
-            if (!resp.ok) throw new Error('API error');
-
-            const data = await resp.json();
-            if (data.inside_zone) {
-              setFeedback('✅ Address is valid for service', '#16a34a');
-              localStorage.setItem("validatedAddress", JSON.stringify(address));
-            } else {
-              setFeedback('❌ Address is not serviceable', '#b91c1c');
-            }
-          } catch (error) {
-            setFeedback('⚠️ Error validating address', '#b91c1c');
-            console.error('Validation error:', error);
-          }
+        } catch (error) {
+          setFeedback('⚠️ Error validating address', '#b91c1c');
+          console.error('Validation error:', error);
         }
-      
-        checkBtn.addEventListener('click', handleCheckAvailability);
-
-        address1Input.addEventListener('input', function() {
-          setFeedback('', '');
-          setSubmitEnabled(false);
-        });
-      })
-    })()
-</script>
-`;
+      }
+    
+      checkBtn.addEventListener('click', handleCheckAvailability);
+  
+      address1Input.addEventListener('input', function() {
+        setFeedback('', '');
+        setSubmitEnabled(false);
+      });
+  })()
+  `;
 };
-
