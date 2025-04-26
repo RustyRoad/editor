@@ -490,12 +490,11 @@ const components = (editor, opts = {}) => {
         title: 'Service Validation'
       },
       init() {
-        // If we have saved HTML, use that, otherwise use the template function
-        if (this.get('renderedHTML')) {
-          this.set('content', this.get('renderedHTML'));
-        } else {
-          this.set('content', serviceValidation(this.get('selectedService') || {}));
-        }
+        // Initialize with empty content first
+        this.set('content', '');
+        
+        // Then load either saved HTML or generate from selected service
+        this.loadContent();
         
         this.listenTo(this, 'change:selectedService', this.handleProductChange);
         this.listenTo(this, 'change:stripeKey', this.handleDataChange);
@@ -510,8 +509,23 @@ const components = (editor, opts = {}) => {
       },
       handleDataChange() {
         console.log('[Service Validation Model] Stripe key or services updated.');
+        this.loadContent();
         if (this.get('selectedService')) {
           this.trigger('rerender');
+        }
+      },
+
+      loadContent() {
+        const selectedService = this.get('selectedService');
+        const services = this.get('services') || [];
+        const serviceData = services.find(s => s.id?.toString() === selectedService) || {};
+        
+        if (this.get('renderedHTML')) {
+          this.set('content', this.get('renderedHTML'));
+        } else if (selectedService && serviceData.id) {
+          this.set('content', serviceValidation(serviceData));
+        } else {
+          this.set('content', 'Please select a service from the settings panel.');
         }
       },
       fetchStripeKey() {
@@ -561,13 +575,19 @@ const components = (editor, opts = {}) => {
       },
 
       toJSON(opts = {}) {
+        // Force update content before saving
+        if (this.view && this.view.el) {
+          this.set('renderedHTML', this.view.el.innerHTML);
+        }
+        
         const obj = {
           attributes: this.getAttributes(),
           components: this.get('components').toJSON(opts),
           stripeKey: this.get('stripeKey'),
           services: this.get('services'),
           traits: this.get('traits'),
-          template: 'serviceValidation'
+          template: 'serviceValidation',
+          selectedService: this.get('selectedService')
         };
         
         if (this.view && this.view.el) {
