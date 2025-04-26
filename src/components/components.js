@@ -3,6 +3,7 @@ import embeddedCheckout from "./embedded-checkout";
 import serviceSignup from "./service-signup";
 import serviceValidation from "./service-validation";
 import { loadStripe } from '@stripe/stripe-js';
+const DomComponents = grapesjs.DomComponents;
 
 // Helper function defined within the main export scope
 const formatPrice = (amount, currency) => {
@@ -98,7 +99,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -111,7 +112,7 @@ const components = (editor, opts = {}) => {
           });
         },
       fetchProducts() {
-        fetch('/api/products')
+        fetch('http://192.168.50.14/api/products')
         .then(response => response.text().then(text => text ? JSON.parse(text) : []))
         .then(data => {
             const products = data.map(product => ({
@@ -173,7 +174,7 @@ const components = (editor, opts = {}) => {
             
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('/api/stripe/create-checkout-session', {
+                const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -243,7 +244,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -256,7 +257,7 @@ const components = (editor, opts = {}) => {
           });
       },
       fetchProducts() {
-        fetch('/api/product/all')
+        fetch('http://192.168.50.14/api/product/all')
           .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
             const products = data.map(product => ({
@@ -288,7 +289,7 @@ const components = (editor, opts = {}) => {
       },
 
       toJSON(opts = {}) {
-        const obj = DomComponents.getType('default').model.prototype.toJSON.apply(this, [opts]);
+        const obj = this.constructor.prototype.toJSON.apply(this, [opts]);
         if (this.view && this.view.el) {
           obj.renderedHTML = this.view.el.innerHTML;
           // Capture form field values
@@ -366,7 +367,7 @@ const components = (editor, opts = {}) => {
           }
 
           try {
-            const resp = await fetch('/api/geocode', {
+            const resp = await fetch('http://192.168.50.14/api/geocode', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -431,7 +432,7 @@ const components = (editor, opts = {}) => {
 
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('/api/stripe/create-checkout-session', {
+                const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -500,7 +501,7 @@ const components = (editor, opts = {}) => {
         }
       },
       fetchStripeKey() {
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => response.json())
           .then(data => {
             if (data && data.public_key) {
@@ -514,7 +515,7 @@ const components = (editor, opts = {}) => {
       },
       fetchServices() {
         alert('Fetching services...');
-        fetch('/api/product/all')
+        fetch('http://192.168.50.14/api/product/all')
           .then(response => response.text().then(text => text ? JSON.parse(text) : []))
           .then(data => {
             const services = data.map(service => ({
@@ -546,7 +547,7 @@ const components = (editor, opts = {}) => {
       },
 
       toJSON(opts = {}) {
-        const obj = DomComponents.getType('default').model.prototype.toJSON.apply(this, [opts]);
+        const obj = this.constructor.prototype.toJSON.apply(this, [opts]);
         if (this.view && this.view.el) {
           obj.renderedHTML = this.view.el.innerHTML;
           // Capture validation state
@@ -615,7 +616,7 @@ const components = (editor, opts = {}) => {
             setFeedback('Please complete all address fields.', '#b91c1c');
             return;
           }
-          fetch('/api/geocode', {
+          fetch('http://192.168.50.14/api/geocode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
