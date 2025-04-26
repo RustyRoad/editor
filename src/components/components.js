@@ -716,12 +716,51 @@ const components = (editor, opts = {}) => {
           .then(data => {
             if (data.inside_zone) {
               setFeedback('✅ Address is in service area.', '#16a34a');
+              this.isValidated = true;
+              // Show checkout form
+              const checkoutForm = embeddedCheckout(selectedService);
+              componentRootEl.innerHTML = checkoutForm;
+              // Initialize Stripe embedded checkout
+              this.initStripeCheckout(componentRootEl, stripeKey, selectedService);
             } else {
               setFeedback('❌ Address is outside the service area.', '#b91c1c');
+              this.isValidated = false;
             }
           });
         });
 
+      },
+      
+      initStripeCheckout(containerEl, stripeKey, selectedService) {
+        (async () => {
+          try {
+            const stripeInstance = await loadStripe(stripeKey);
+            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
+            
+            const checkout = await stripeInstance.initEmbeddedCheckout({
+              fetchClientSecret: async () => {
+                const res = await fetch('/api/stripe/create-checkout-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    productId: selectedService.id,
+                    amount: selectedService.price
+                  })
+                });
+                const { clientSecret } = await res.json();
+                return clientSecret;
+              }
+            });
+
+            const checkoutContainer = containerEl.querySelector('#embedded-checkout-container');
+            if (checkoutContainer) {
+              checkout.mount(checkoutContainer);
+            }
+          } catch (error) {
+            const errorMessage = containerEl.querySelector('#error-message');
+            if (errorMessage) errorMessage.textContent = error.message;
+          }
+        })();
       }
     }
   });
