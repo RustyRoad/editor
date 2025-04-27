@@ -79,7 +79,7 @@ const components = (editor, opts = {}) => {
       fetchStripeKey() {
         // Avoid redundant fetches
         if (this.get('stripeKey')) return;
-        fetch('/api/stripe/key') // Ensure this endpoint is correct
+        fetch('http://192.168.50.14/api/stripe/key') // Ensure this endpoint is correct
           .then(response => {
              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
              return response.json();
@@ -101,7 +101,7 @@ const components = (editor, opts = {}) => {
       fetchProducts() {
         // Avoid redundant fetches
         if (this.get('products')?.length > 0) return;
-        fetch('/api/products') // Ensure this endpoint is correct
+        fetch('http://192.168.50.14/api/products') // Ensure this endpoint is correct
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.text().then(text => text ? JSON.parse(text) : []); // Handle empty response
@@ -200,7 +200,7 @@ const components = (editor, opts = {}) => {
               // Fetch the client secret from the backend
               fetchClientSecret: async () => {
                 try {
-                    const res = await fetch('/api/stripe/create-checkout-session', { // Ensure endpoint is correct
+                    const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', { // Ensure endpoint is correct
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       // Send product ID and amount (or let backend derive amount from ID)
@@ -291,7 +291,7 @@ const components = (editor, opts = {}) => {
       // Fetch Stripe key (same as Embedded Checkout)
       fetchStripeKey() {
         if (this.get('stripeKey')) return;
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => {
              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
              return response.json();
@@ -312,7 +312,7 @@ const components = (editor, opts = {}) => {
       // Fetch services (using the specific endpoint from original code)
       fetchProducts() { // Method name kept for consistency with listeners
         if (this.get('products')?.length > 0) return;
-        fetch('/api/product/all') // Endpoint from original code
+        fetch('http://192.168.50.14/api/product/all') // Endpoint from original code
           .then(response => {
              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
              return response.text().then(text => text ? JSON.parse(text) : []);
@@ -458,7 +458,7 @@ const components = (editor, opts = {}) => {
 
             try {
                 // Call the geocode/availability endpoint
-                const resp = await fetch('/api/geocode', { // Or /api/check-availability
+                const resp = await fetch('http://192.168.50.14/api/geocode', { // Or /api/check-availability
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -530,7 +530,7 @@ const components = (editor, opts = {}) => {
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
                 try {
-                    const res = await fetch('/api/stripe/create-checkout-session', { // Ensure endpoint is correct
+                    const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', { // Ensure endpoint is correct
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -602,6 +602,13 @@ const components = (editor, opts = {}) => {
             name: 'selectedService',
             options: [ { id: '', name: 'Select a Service...' } ],
             changeProp: 1
+          },
+          {
+            type: 'text',
+            label: 'Success Page URL',
+            name: 'successPage',
+            placeholder: '/success',
+            changeProp: 1
           }
         ],
         stripeKey: null,
@@ -621,7 +628,7 @@ const components = (editor, opts = {}) => {
       },
       fetchStripeKey() {
         if (this.get('stripeKey')) return;
-        fetch('/settings/stripe-api-key') // Endpoint for publishable key
+        fetch('http://192.168.50.14/settings/stripe-api-key') // Endpoint for publishable key
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -642,7 +649,7 @@ const components = (editor, opts = {}) => {
       fetchServices() {
         if (this.get('services')?.length > 0) return;
         console.log('[Service Validation Model] Fetching services...');
-        fetch('/api/product/all') // Endpoint for services
+        fetch('http://192.168.50.14/api/product/all') // Endpoint for services
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.text().then(text => text ? JSON.parse(text) : []);
