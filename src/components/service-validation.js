@@ -166,7 +166,23 @@ export default (service = {}) => {
               console.error('Stripe checkout error:', error);
             }
           }
-          initStripeCheckout(container, service.stripeKey, service);
+          async function fetchStripeKey() {
+            try {
+              const response = await fetch('/api/stripe/key');
+              const data = await response.json();
+              return data?.public_key || null;
+            } catch (err) {
+              return null;
+            }
+          }
+
+          const stripeKey = service.stripeKey || await fetchStripeKey();
+          if (!stripeKey) {
+            console.error('Stripe API key missing');
+            setFeedback('❌ Payment processing unavailable', '#b91c1c');
+            return;
+          }
+          initStripeCheckout(container, stripeKey, service);
           setSubmitEnabled(true);
         } else if (data.invalid_address) {
           setFeedback('❌ Address is invalid', '#b91c1c');
