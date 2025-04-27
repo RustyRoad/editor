@@ -310,12 +310,39 @@ export default (service = {}) => {
               }
               
               const { status, session_id, client_secret } = await response.json();
-              if (status !== 'success' || !client_secret) {
+              if (status !== 'success') {
                   throw new Error('Invalid checkout session response');
               }
-              clientSecret = client_secret;
-              // Store session_id for reference if needed
-              sessionId = session_id;
+
+              // Handle both Checkout Session and PaymentIntent responses
+              if (client_secret && client_secret.startsWith('pi_')) {
+                  // PaymentIntent client secret
+                  clientSecret = client_secret;
+                  elements = stripe.elements({
+                      appearance: {
+                          theme: 'stripe',
+                          variables: {
+                              colorPrimary: '#2563eb',
+                              colorBackground: '#ffffff',
+                              colorText: '#30313d',
+                              colorDanger: '#df1b41',
+                              fontFamily: 'Poppins, system-ui, sans-serif',
+                              spacingUnit: '4px',
+                              borderRadius: '4px'
+                          }
+                      },
+                      clientSecret
+                  });
+                  paymentElement = elements.create('payment');
+              } else if (session_id) {
+                  // Checkout Session
+                  const checkout = await stripe.initEmbeddedCheckout({
+                      clientSecret: session_id
+                  });
+                  checkout.mount('#payment-element');
+              } else {
+                  throw new Error('Invalid payment response - missing required fields');
+              }
 
               const appearance = {
                   theme: 'stripe',
