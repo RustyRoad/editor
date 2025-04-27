@@ -301,14 +301,21 @@ export default (service = {}) => {
                   }),
               });
               if (!response.ok) {
-                  let errorMsg = 'Failed to create payment intent';
-                  try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (parseError) { /* Ignore */ }
+                  let errorMsg = 'Failed to create checkout session';
+                  try {
+                      const errorData = await response.json();
+                      errorMsg = errorData.message || errorMsg;
+                  } catch (parseError) {
+                      console.error('Error parsing error response:', parseError);
+                  }
                   throw new Error(errorMsg);
               }
-              const { clientSecret: paymentIntentClientSecret } = await response.json();
-              clientSecret = paymentIntentClientSecret;
-
-              if (!clientSecret) throw new Error('Missing client secret from server.');
+              
+              const { status, session_id } = await response.json();
+              if (status !== 'success' || !session_id) {
+                  throw new Error('Invalid checkout session response');
+              }
+              clientSecret = session_id;
 
               const appearance = {
                   theme: 'stripe',
@@ -322,7 +329,10 @@ export default (service = {}) => {
                       borderRadius: '4px'
                   }
               };
-              elements = stripe.elements({ appearance, clientSecret });
+              // Initialize Stripe Checkout with the session ID
+              const checkout = await stripe.initEmbeddedCheckout({
+                  clientSecret: session_id
+              });
               paymentElement = elements.create('payment');
 
               if (paymentElementDiv) {
