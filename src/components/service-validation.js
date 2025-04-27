@@ -237,7 +237,10 @@ export default (service = {}) => {
       }
 
       // --- Initialization Functions ---
-      async function fetchStripeKey() {
+      async function validateServiceData() {
+          if (!serviceData.priceId) {
+              throw new Error('Missing required field: priceId');
+          }
           if (serviceData && serviceData.stripeKey) {
               return serviceData.stripeKey;
           }
@@ -256,6 +259,8 @@ export default (service = {}) => {
           setLoading(true);
           setErrorMessage('');
 
+          // First validate required fields
+          await validateServiceData();
           stripePublishableKey = await fetchStripeKey();
           if (!stripePublishableKey) {
               setErrorMessage('Payment processing is currently unavailable. Missing configuration.');
@@ -275,7 +280,7 @@ export default (service = {}) => {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                      price_id: serviceData.priceId, // Assuming priceId is available in serviceData
+                      price_id: serviceData.priceId,
                       quantity: 1, // Default quantity
                       success_url: window.location.href.split('?')[0] + '?payment_status=success',
                       cancel_url: window.location.href.split('?')[0] + '?payment_status=cancelled'

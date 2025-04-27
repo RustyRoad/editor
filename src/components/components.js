@@ -101,7 +101,7 @@ const components = (editor, opts = {}) => {
       fetchProducts() {
         // Avoid redundant fetches
         if (this.get('products')?.length > 0) return;
-        fetch('/api/products') // Ensure this endpoint is correct
+        fetch('/api/product/all') // Ensure this endpoint is correct
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.text().then(text => text ? JSON.parse(text) : []); // Handle empty response
