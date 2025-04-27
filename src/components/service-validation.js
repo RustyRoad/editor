@@ -142,8 +142,10 @@ export default (service = {}) => {
           localStorage.setItem("validatedAddress", JSON.stringify(address));
           async function initStripeCheckout(containerEl, stripeKey, selectedService) {
             try {
-              const stripe = await loadStripe(stripeKey);
-              if (!stripe) throw new Error('Stripe failed to load');
+              if (typeof Stripe === 'undefined') {
+                throw new Error('Stripe.js not loaded');
+              }
+              const stripe = Stripe(stripeKey);
               const checkout = await stripe.initEmbeddedCheckout({
                 fetchClientSecret: async () => {
                   const res = await fetch('/api/stripe/create-checkout-session', {
