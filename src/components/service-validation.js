@@ -294,7 +294,7 @@ export default (service = {}) => {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                      product_id: serviceData.id,
+                      product_id: '' + serviceData.id,
                       quantity: 1, // Default quantity
                       success_url: window.location.href.split('?')[0] + '?payment_status=success',
                       cancel_url: window.location.href.split('?')[0] + '?payment_status=cancelled'
