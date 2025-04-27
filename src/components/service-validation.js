@@ -525,7 +525,7 @@ export default (service = {}) => {
           setLoading(false);
       }
 
-      function handleApplyCoupon() {
+      async function handleApplyCoupon() {
           if (!couponInput || !applyCouponBtn) return;
           const code = couponInput.value.trim();
           if (!code) {
