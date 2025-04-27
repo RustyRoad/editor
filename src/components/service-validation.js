@@ -271,14 +271,14 @@ export default (service = {}) => {
           stripe = Stripe(stripePublishableKey);
 
           try {
-              const response = await fetch('/api/stripe/create-payment-intent', {
+              const response = await fetch('/api/stripe/checkout-sessions', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                      amount: serviceData.price,
-                      currency: serviceData.currency || 'usd',
-                      serviceId: serviceData.id,
-                      metadata: { serviceTitle: serviceData.title }
+                      price_id: serviceData.priceId, // Assuming priceId is available in serviceData
+                      quantity: 1, // Default quantity
+                      success_url: window.location.href.split('?')[0] + '?payment_status=success',
+                      cancel_url: window.location.href.split('?')[0] + '?payment_status=cancelled'
                   }),
               });
               if (!response.ok) {
