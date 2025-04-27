@@ -311,11 +311,13 @@ export default (service = {}) => {
                   throw new Error(errorMsg);
               }
               
-              const { status, session_id } = await response.json();
-              if (status !== 'success' || !session_id) {
+              const { status, session_id, client_secret } = await response.json();
+              if (status !== 'success' || !client_secret) {
                   throw new Error('Invalid checkout session response');
               }
-              clientSecret = session_id;
+              clientSecret = client_secret;
+              // Store session_id for reference if needed
+              sessionId = session_id;
 
               const appearance = {
                   theme: 'stripe',
@@ -329,10 +331,21 @@ export default (service = {}) => {
                       borderRadius: '4px'
                   }
               };
-              // Initialize Stripe Checkout with the session ID
-              const checkout = await stripe.initEmbeddedCheckout({
-                  clientSecret: session_id
-              });
+              // Initialize Stripe Elements with client_secret
+              const appearance = {
+                  theme: 'stripe',
+                  variables: {
+                      colorPrimary: '#2563eb',
+                      colorBackground: '#ffffff',
+                      colorText: '#30313d',
+                      colorDanger: '#df1b41',
+                      fontFamily: 'Poppins, system-ui, sans-serif',
+                      spacingUnit: '4px',
+                      borderRadius: '4px'
+                  }
+              };
+              elements = stripe.elements({ appearance, clientSecret });
+              paymentElement = elements.create('payment');
               paymentElement = elements.create('payment');
 
               if (paymentElementDiv) {
