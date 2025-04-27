@@ -1,115 +1,132 @@
 import webinarCheckout1 from "./webinar-checkout-1";
 import embeddedCheckout from "./embedded-checkout";
 import serviceSignup from "./service-signup";
-import serviceValidation from "./service-validation";
+// Import the updated service validation component function
+import serviceValidation from "./service-validation"; // Ensure this file contains the updated code with integrated billing
 import { loadStripe } from '@stripe/stripe-js';
 
 // Helper function defined within the main export scope
 const formatPrice = (amount, currency) => {
   const numAmount = Number(amount);
   if (isNaN(numAmount)) {
+    // Return a default or error string if amount is not a valid number
     return 'N/A';
   }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency || 'USD',
+    currency: currency || 'USD', // Default to USD if not provided
   }).format(numAmount);
 };
 
 // Register components with GrapesJS
 const components = (editor, opts = {}) => {
-  const components = editor.DomComponents;
-  const domc = editor.DomComponents; // Alias for clarity
-  const componentType = 'Checkout 2 Step'; // Seems unused, but keeping for now
+  const domc = editor.DomComponents; // Use DomComponents API
 
   // Register webinar-checkout-1 component
-  components.addType('webinar-checkout-1', {
+  // (Assuming webinarCheckout1 is a function returning HTML/JS string)
+  domc.addType('webinar-checkout-1', {
     model: {
       defaults: {
-        component: webinarCheckout1,
-        stylable: true
+        component: webinarCheckout1, // Check if this function exists and returns HTML
+        stylable: true,
+        // Add necessary traits if this component needs configuration
       }
     }
   });
 
-  // Register Embedded Checkout component
+  // --- Full Embedded Checkout Component Definition (Restored) ---
   domc.addType('Embedded Checkout', {
-    isComponent: el => {
-      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'embedded-checkout') {
-        return { type: 'Embedded Checkout' };
-      }
-    },
+    isComponent: el => el.getAttribute && el.getAttribute('data-gjs-type') === 'embedded-checkout' ? { type: 'Embedded Checkout' } : null,
     model: {
       defaults: {
         tagName: 'div',
-        attributes: { 'data-gjs-type': 'embedded-checkout' },
-        content: 'Select a product for embedded checkout...',
+        attributes: { 'data-gjs-type': 'embedded-checkout', class:'embedded-checkout-wrapper' }, // Added wrapper class
+        content: 'Select a product for embedded checkout...', // Initial placeholder
         droppable: false,
-        stylable: [],
+        stylable: [], // Define stylable properties if needed
         traits: [
           {
             type: 'select',
             label: 'Select Product',
-            name: 'selectedProduct',
-
-            options: [],
-            changeProp: 1
+            name: 'selectedProduct', // Model attribute name
+            options: [], // Will be populated dynamically
+            changeProp: 1 // Trigger model change on selection
           }
         ],
-        stripeKey: null,
-        products: [],
-        title: 'Embedded Checkout'
+        // Model properties to store data
+        stripeKey: null, // Fetched Stripe public key
+        products: [], // Fetched list of products
+        selectedProduct: '', // ID of the selected product
+        title: 'Embedded Checkout' // Name in GrapesJS UI
       },
+      // Model initialization
       init() {
+        // Listen for changes that require action or re-render
         this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
-        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
-        this.listenTo(this, 'change:products', this.handleDataChange);
+        // Re-render if Stripe key or product list changes after initial load
+        this.listenTo(this, 'change:stripeKey change:products', () => this.trigger('rerender'));
 
+        // Fetch necessary data
         this.fetchStripeKey();
         this.fetchProducts();
       },
+      // Handle product selection change
       handleProductChange() {
         console.log('[Embedded Model] Product selection changed:', this.get('selectedProduct'));
-        this.trigger('rerender');
+        this.trigger('rerender'); // Re-render the view
       },
-      handleDataChange() {
-        console.log('[Embedded Model] Stripe key or products updated.');
-        if (this.get('selectedProduct')) {
-          this.trigger('rerender');
-        }
-      },
+      // Fetch Stripe public key
       fetchStripeKey() {
-        fetch('/api/stripe/key')
-          .then(response => response.json())
+        // Avoid redundant fetches
+        if (this.get('stripeKey')) return;
+        fetch('http://192.168.50.14/api/stripe/key') // Ensure this endpoint is correct
+          .then(response => {
+             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+             return response.json();
+          })
           .then(data => {
             if (data && data.public_key) {
               this.set('stripeKey', data.public_key);
+              console.log('[Embedded Model] Stripe key fetched.');
             } else {
+              console.warn('[Embedded Model] Stripe public key not found in response.');
               this.set('stripeKey', null);
             }
           }).catch(err => {
+            console.error('[Embedded Model] Error fetching Stripe key:', err);
             this.set('stripeKey', null);
           });
         },
+      // Fetch product list
       fetchProducts() {
-        fetch('/api/products')
-        .then(response => response.text().then(text => text ? JSON.parse(text) : []))
+        // Avoid redundant fetches
+        if (this.get('products')?.length > 0) return;
+        fetch('http://192.168.50.14/api/products') // Ensure this endpoint is correct
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.text().then(text => text ? JSON.parse(text) : []); // Handle empty response
+        })
         .then(data => {
-            const products = data.map(product => ({
-              id: product.id || Date.now() + Math.random(),
+            // Map fetched data to the expected format
+            const products = (data || []).map(product => ({
+              id: product.id || `prod_${Date.now()}_${Math.random()}`, // Ensure unique ID
               title: product.name || 'Untitled Product',
-              price: Math.max(0, Number(product.price)) || 0,
+              price: Math.max(0, Number(product.price)) || 0, // Ensure non-negative number
               description: product.description || '',
-              currency: product.currency
+              currency: product.currency || 'usd', // Default currency
+              images: product.images || [] // Include images if needed
             }));
             this.set('products', products);
-            this.updateTraits();
+            console.log('[Embedded Model] Products fetched:', products.length);
+            this.updateProductTraitOptions(); // Update the dropdown
           }).catch(error => {
+            console.error('[Embedded Model] Error fetching products:', error);
             this.set('products', []);
-            this.updateTraits();
+            this.updateProductTraitOptions(); // Update dropdown even on error
           });
       },
-      updateTraits() {
+      // Update the 'Select Product' trait options
+      updateProductTraitOptions() {
         const products = this.get('products') || [];
         const trait = this.getTrait('selectedProduct');
         if (trait) {
@@ -118,144 +135,210 @@ const components = (editor, opts = {}) => {
             name: `${product.title} (${formatPrice(product.price, product.currency)})`,
             value: product.id.toString()
           }));
-          options.unshift({ id: '', name: 'Select a Product...', value: '' });
+          options.unshift({ id: '', name: 'Select a Product...', value: '' }); // Add default option
           trait.set('options', options);
+          console.log('[Embedded Model] Product trait options updated.');
+        } else {
+           console.warn('[Embedded Model] Could not find selectedProduct trait.');
         }
       },
+       // Override toJSON if needed for saving specific state
+       toJSON(opts = {}) {
+         const obj = domc.getType('default').model.prototype.toJSON.call(this, opts);
+         obj.selectedProduct = this.get('selectedProduct');
+         return obj;
+       },
     },
+    // Component View definition
     view: {
       init() {
+        // Re-render the view whenever relevant model properties change
         this.listenTo(this.model, 'change:selectedProduct change:stripeKey change:products rerender', this.render);
       },
+      // Main rendering logic
       onRender() {
         const model = this.model;
         const componentRootEl = this.el;
+        componentRootEl.innerHTML = ''; // Clear previous content
+
         const stripeKey = model.get('stripeKey');
         const selectedProductId = model.get('selectedProduct');
         const products = model.get('products') || [];
         const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
 
         let htmlContent;
+        // Generate HTML based on the current state
         if (!selectedProductId) {
-          htmlContent = 'Please select a product from the settings panel.';
+          htmlContent = '<div class="p-4 text-center text-gray-500">Please select a product from the settings panel.</div>';
         } else if (!selectedProduct) {
-          htmlContent = '<div class="text-red-600">Selected product data not found. Please re-select.</div>';
+          htmlContent = '<div class="p-4 text-center text-red-600">Error: Selected product data not found. Please re-select.</div>';
         } else {
-          htmlContent = embeddedCheckout(selectedProduct);
+          // Call the imported template function for the embedded checkout UI
+          htmlContent = embeddedCheckout(selectedProduct); // Pass selected product data
         }
-        componentRootEl.innerHTML = htmlContent;
+        componentRootEl.innerHTML = htmlContent; // Set the generated HTML
 
-        if (!stripeKey || !selectedProduct) return;
+        // --- Initialize Stripe Embedded Checkout ---
+        // Only proceed if we have a key and a selected product
+        if (!stripeKey || !selectedProduct) {
+          console.log('[Embedded View] Skipping Stripe init (missing key or product).');
+          return;
+        }
 
+        // Use an async IIFE to handle Stripe loading and initialization
         (async () => {
           try {
-            const stripeInstance = await loadStripe(stripeKey);
-            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
+            // Ensure Stripe.js is loaded
+            if (typeof Stripe === 'undefined') {
+                await loadStripe(stripeKey); // Load Stripe.js if not already loaded
+                if (typeof Stripe === 'undefined') throw new Error("Stripe.js failed to load.");
+            }
+            const stripeInstance = Stripe(stripeKey); // Initialize Stripe with the key
 
+            // Initialize the embedded checkout session
             const checkout = await stripeInstance.initEmbeddedCheckout({
+              // Fetch the client secret from the backend
               fetchClientSecret: async () => {
-                const res = await fetch('/api/stripe/create-checkout-session', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
-                });
-                const { clientSecret } = await res.json();
-                return clientSecret;
+                try {
+                    const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', { // Ensure endpoint is correct
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      // Send product ID and amount (or let backend derive amount from ID)
+                      body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
+                    });
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({})); // Try parsing error
+                        throw new Error(errorData.error || `Failed to create checkout session (Status: ${res.status})`);
+                    }
+                    const { clientSecret } = await res.json();
+                    if (!clientSecret) throw new Error("Client secret missing from response.");
+                    return clientSecret;
+                } catch (fetchErr) {
+                    console.error('[Embedded View] Error fetching client secret:', fetchErr);
+                    // Display error to user within the component
+                    const errorContainer = componentRootEl.querySelector('#error-message'); // Ensure this exists in embeddedCheckout template
+                    if (errorContainer) errorContainer.textContent = `Error initializing payment: ${fetchErr.message}`;
+                    throw fetchErr; // Re-throw to stop checkout mounting
+                }
               }
-            });
+            }); // End initEmbeddedCheckout
 
-            const container = componentRootEl.querySelector('#embedded-checkout-container');
+            // Mount the checkout form into the designated container
+            const container = componentRootEl.querySelector('#embedded-checkout-container'); // Ensure this ID exists in the template
             if (container) {
               checkout.mount(container);
+              console.log('[Embedded View] Stripe Embedded Checkout mounted.');
+            } else {
+              console.error('[Embedded View] Mount container #embedded-checkout-container not found.');
+              const errorContainer = componentRootEl.querySelector('#error-message');
+              if (errorContainer) errorContainer.textContent = 'Error: Payment form container not found.';
             }
           } catch (error) {
-            const errorMessage = componentRootEl.querySelector('#error-message');
-            if (errorMessage) errorMessage.textContent = error.message;
+            console.error('[Embedded View] Stripe initialization error:', error);
+            // Display error message within the component
+            const errorMessageContainer = componentRootEl.querySelector('#error-message'); // Ensure this ID exists
+            if (errorMessageContainer) errorMessageContainer.textContent = `Payment Error: ${error.message}`;
           }
-        })();
+        })(); // End async IIFE
+      }, // End onRender
+      onRemove() {
+        console.log('[Embedded View] Component removed.');
+        // Add any necessary cleanup here
       }
-    }
-  });
+    } // End view
+  }); // End addType 'Embedded Checkout'
 
-  // Register Service Signup component
+  // --- Full Service Signup Component Definition (Restored) ---
+  // NOTE: This uses the older embedded checkout logic from the original file.
   domc.addType('Service Signup', {
-    isComponent: el => {
-      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'service-signup') {
-        return { type: 'Service Signup' };
-      }
-    },
+    isComponent: el => el.getAttribute && el.getAttribute('data-gjs-type') === 'service-signup' ? { type: 'Service Signup' } : null,
     model: {
       defaults: {
         tagName: 'div',
-        attributes: { 'data-gjs-type': 'service-signup' },
-        content: 'Select a service...',
+        attributes: { 'data-gjs-type': 'service-signup', class:'service-signup-wrapper' }, // Added wrapper class
+        content: 'Select a service...', // Initial placeholder
         droppable: false,
         stylable: [],
         traits: [
           {
             type: 'select',
-            label: 'Select Service',
-            name: 'selectedProduct',
-
+            label: 'Select Service', // Changed label for clarity
+            name: 'selectedProduct', // Keep name consistent if API endpoint expects 'product'
             options: [],
             changeProp: 1
           }
         ],
-        stripeKey: null,
-        products: [],
-        title: 'Service Signup'
+        stripeKey: null, // Fetched Stripe key
+        products: [], // Fetched list of services/products
+        selectedProduct: '', // ID of the selected service/product
+        title: 'Service Signup' // Name in GrapesJS UI
       },
+      // Model initialization
       init() {
+        // Listen for changes
         this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
-        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
-        this.listenTo(this, 'change:products', this.handleDataChange);
+        this.listenTo(this, 'change:stripeKey change:products', () => this.trigger('rerender'));
 
+        // Fetch data
         this.fetchStripeKey();
-        this.fetchProducts();
+        this.fetchProducts(); // Renamed method for consistency, fetches services
       },
+      // Handle selection change
       handleProductChange() {
-        console.log('[Service Signup Model] Product selection changed:', this.get('selectedProduct'));
+        console.log('[Service Signup Model] Product/Service selection changed:', this.get('selectedProduct'));
         this.trigger('rerender');
       },
-      handleDataChange() {
-        console.log('[Service Signup Model] Stripe key or products updated.');
-        if (this.get('selectedProduct')) {
-          this.trigger('rerender');
-        }
-      },
+      // Fetch Stripe key (same as Embedded Checkout)
       fetchStripeKey() {
-        fetch('/api/stripe/key')
-          .then(response => response.json())
+        if (this.get('stripeKey')) return;
+        fetch('http://192.168.50.14/api/stripe/key')
+          .then(response => {
+             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+             return response.json();
+          })
           .then(data => {
             if (data && data.public_key) {
               this.set('stripeKey', data.public_key);
+              console.log('[Service Signup Model] Stripe key fetched.');
             } else {
+              console.warn('[Service Signup Model] Stripe public key not found.');
               this.set('stripeKey', null);
             }
           }).catch(err => {
+            console.error('[Service Signup Model] Error fetching Stripe key:', err);
             this.set('stripeKey', null);
           });
       },
-      fetchProducts() {
-        fetch('/api/product/all')
-          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
+      // Fetch services (using the specific endpoint from original code)
+      fetchProducts() { // Method name kept for consistency with listeners
+        if (this.get('products')?.length > 0) return;
+        fetch('http://192.168.50.14/api/product/all') // Endpoint from original code
+          .then(response => {
+             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+             return response.text().then(text => text ? JSON.parse(text) : []);
+          })
           .then(data => {
-            const products = data.map(product => ({
-              id: product.id || Date.now() + Math.random(),
-              title: product.name || 'Untitled Product',
+            // Map data (assuming structure is similar to products)
+            const products = (data || []).map(product => ({
+              id: product.id || `prod_${Date.now()}_${Math.random()}`,
+              title: product.name || 'Untitled Service', // Use 'Service' in title
               price: Math.max(0, Number(product.price)) || 0,
               description: product.description || '',
-              currency: product.currency
+              currency: product.currency || 'usd',
+              images: product.images || []
             }));
-            this.set('products', products);
-            this.updateTraits();
+            this.set('products', products); // Store fetched data
+            console.log('[Service Signup Model] Services fetched:', products.length);
+            this.updateTraits(); // Update the dropdown
           }).catch(error => {
+            console.error('[Service Signup Model] Error fetching services:', error);
             this.set('products', []);
             this.updateTraits();
           });
       },
+      // Update trait options (similar to Embedded Checkout)
       updateTraits() {
-        const products = this.get('products') || [];
+        const products = this.get('products') || []; // 'products' holds the services
         const trait = this.getTrait('selectedProduct');
         if (trait) {
           const options = products.map(product => ({
@@ -265,197 +348,251 @@ const components = (editor, opts = {}) => {
           }));
           options.unshift({ id: '', name: 'Select a Service...', value: '' });
           trait.set('options', options);
+          console.log('[Service Signup Model] Service trait options updated.');
+        } else {
+           console.warn('[Service Signup Model] Could not find selectedProduct trait.');
         }
       },
-
+      // Override toJSON if needed
       toJSON(opts = {}) {
-        // Capture current state directly from the model
-        const obj = {
-          attributes: this.getAttributes(),
-          components: this.get('components').toJSON(opts),
-          stripeKey: this.get('stripeKey'),
-          products: this.get('products'),
-          traits: this.get('traits'),
-          template: 'serviceSignup'
-        };
-
-        if (this.view && this.view.el) {
-          obj.renderedHTML = this.view.el.innerHTML;
-          const inputs = this.view.el.querySelectorAll('input');
-          obj.formValues = {};
-          inputs.forEach(input => {
-            obj.formValues[input.id] = input.value;
-          });
-        }
+        const obj = domc.getType('default').model.prototype.toJSON.call(this, opts);
+        obj.selectedProduct = this.get('selectedProduct');
+        // Include other state if necessary, e.g., form values if captured
+        // obj.formValues = this.get('formValues'); // Example if form state was saved
         return obj;
       }
     },
+    // View definition for Service Signup
     view: {
       init() {
+        // Listen for changes requiring re-render
         this.listenTo(this.model, 'change:selectedProduct change:stripeKey change:products rerender', this.render);
       },
+      // Main rendering logic
       onRender() {
         const model = this.model;
         const componentRootEl = this.el;
+        componentRootEl.innerHTML = ''; // Clear previous content
+
         const stripeKey = model.get('stripeKey');
         const selectedProductId = model.get('selectedProduct');
-        const products = model.get('products') || [];
+        const products = model.get('products') || []; // This holds services
         const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
 
         let htmlContent;
+        // Generate HTML based on state
         if (!selectedProductId) {
-          htmlContent = 'Please select a service from the settings panel.';
+          htmlContent = '<div class="p-4 text-center text-gray-500">Please select a service from the settings panel.</div>';
         } else if (!selectedProduct) {
-          htmlContent = '<div class="text-red-600">Selected service data not found. Please re-select.</div>';
+          htmlContent = '<div class="p-4 text-center text-red-600">Error: Selected service data not found. Please re-select.</div>';
         } else {
-          htmlContent = serviceSignup(selectedProduct);
+          // Call the imported serviceSignup template function
+          htmlContent = serviceSignup(selectedProduct); // Pass selected service data
         }
-        componentRootEl.innerHTML = htmlContent;
+        componentRootEl.innerHTML = htmlContent; // Set generated HTML
 
-        if (!stripeKey || !selectedProduct) return;
+        // --- Initialize Address Validation and Stripe Embedded Checkout (from original code) ---
+        if (!stripeKey || !selectedProduct) {
+            console.log('[Service Signup View] Skipping JS init (missing key or product).');
+            return; // Don't proceed if key or service is missing
+        }
 
-        // Initialize address validation
+        // Find elements within the newly rendered component
         const address1Input = componentRootEl.querySelector('#address1');
         const cityInput = componentRootEl.querySelector('#city');
         const stateInput = componentRootEl.querySelector('#state');
         const zip5Input = componentRootEl.querySelector('#zip5');
         const checkBtn = componentRootEl.querySelector('#check-availability');
         const feedbackDiv = componentRootEl.querySelector('#address-feedback');
-        const submitBtn = componentRootEl.querySelector('#submit-button');
+        const submitBtn = componentRootEl.querySelector('#submit-button'); // Stripe submit button
+        const errorMsgDiv = componentRootEl.querySelector('#error-message'); // General error display
 
-        function setFeedback(msg, color) {
-          feedbackDiv.textContent = msg;
-          feedbackDiv.style.color = color;
-        }
-
-        function setSubmitEnabled(enabled) {
-          if (enabled) {
-            submitBtn.removeAttribute('disabled');
-            submitBtn.classList.remove('opacity-50');
-          } else {
-            submitBtn.setAttribute('disabled', 'disabled');
-            submitBtn.classList.add('opacity-50');
+        // Helper functions scoped to this view instance
+        const setFeedback = (msg, color) => {
+          if (feedbackDiv) {
+            feedbackDiv.textContent = msg;
+            feedbackDiv.style.color = color;
           }
-        }
+        };
 
+        const setSubmitEnabled = (enabled) => {
+          // This targets the Stripe submit button inside the embedded checkout
+          // We might not directly control its enabled state easily here,
+          // but we control the address validation button state.
+          // The original code enabled the main form submit based on address validation.
+          if (submitBtn) { // Check if the main submit button exists in the template
+             if (enabled) {
+                submitBtn.removeAttribute('disabled');
+                submitBtn.classList.remove('opacity-50');
+             } else {
+                submitBtn.setAttribute('disabled', 'disabled');
+                submitBtn.classList.add('opacity-50');
+             }
+          }
+        };
+
+        // Initial state: disable submit until address is validated
         setSubmitEnabled(false);
 
-        const checkAvailability = async function () {
-          const address1 = address1Input.value.trim();
-          const city = cityInput.value.trim();
-          const state = stateInput.value.trim();
-          const zip5 = zip5Input.value.trim();
-
-          setFeedback('⏳ Checking...', '#2563eb');
-          setSubmitEnabled(false);
-
-          if (!address1 || !city || !state || !zip5) {
-            setFeedback('Please complete all address fields.', '#b91c1c');
-            return;
-          }
-
-          try {
-            const resp = await fetch('/api/geocode', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                address: {
-                  address1,
-                  address2: null,
-                  city,
-                  state,
-                  zip5,
-                  zip4: null
-                },
-                zone_id: 1
-              })
-            });
-
-            if (!resp.ok) {
-              throw new Error('API error');
+        // Address validation logic (async function)
+        const checkAvailability = async () => {
+            // Ensure all required elements exist
+            if (!address1Input || !cityInput || !stateInput || !zip5Input || !checkBtn) {
+                setFeedback('Internal error: Address fields missing.', '#b91c1c');
+                return;
             }
-            const data = await resp.json();
-            if (data.inside_zone) {
-              setFeedback('✅ Address is in service area.', '#16a34a');
-              setSubmitEnabled(true);
-            } else {
-              setFeedback('❌ Address is outside the service area.', '#b91c1c');
-              setSubmitEnabled(false);
-            }
-          } catch (e) {
-            if (e.message.includes('Failed to fetch') || e.message.includes('timeout')) {
-              setFeedback('⚠️ Connection error. Please check your network and try again.', '#b91c1c');
-            } else {
-              setFeedback('⚠️ Could not verify address. Please check and try again.', '#b91c1c');
-            }
-            setSubmitEnabled(false);
-          }
-        };
+            const address1 = address1Input.value.trim();
+            const city = cityInput.value.trim();
+            const state = stateInput.value.trim();
+            const zip5 = zip5Input.value.trim();
 
-        const clearFeedback = function () {
+            setFeedback('⏳ Checking...', '#2563eb');
+            setSubmitEnabled(false); // Disable submit during check
+            checkBtn.disabled = true; // Disable check button during check
+
+            if (!address1 || !city || !state || !zip5) {
+                setFeedback('Please complete all address fields.', '#b91c1c');
+                checkBtn.disabled = false; // Re-enable check button
+                return;
+            }
+
+            try {
+                // Call the geocode/availability endpoint
+                const resp = await fetch('http://192.168.50.14/api/geocode', { // Or /api/check-availability
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    address: { address1, address2: null, city, state, zip5, zip4: null },
+                    zone_id: 1 // Include zone ID if required by API
+                })
+                });
+
+                if (!resp.ok) {
+                    let errorMsg = 'API error during address check.';
+                    try { const errData = await resp.json(); errorMsg = errData.error || errorMsg; } catch (e) {}
+                    throw new Error(errorMsg);
+                }
+                const data = await resp.json();
+
+                // Handle response
+                if (data.inside_zone || data.in_service_area) {
+                    setFeedback('✅ Address is in service area.', '#16a34a');
+                    setSubmitEnabled(true); // Enable the main form submit button
+                } else if (data.invalid_address || data.invalid_zip) {
+                    setFeedback('❌ Address appears invalid. Please check.', '#b91c1c');
+                } else if (data.outside_zone || (data.hasOwnProperty('in_service_area') && !data.in_service_area)) {
+                    setFeedback('❌ Address is outside the service area.', '#b91c1c');
+                } else {
+                    setFeedback('❌ Could not validate address eligibility.', '#b91c1c');
+                }
+            } catch (e) {
+                console.error("[Service Signup View] Address Check Error:", e);
+                if (e.message.includes('Failed to fetch') || e.message.includes('timeout')) {
+                setFeedback('⚠️ Connection error. Please check network.', '#b91c1c');
+                } else {
+                setFeedback(`⚠️ Error verifying address: ${e.message}`, '#b91c1c');
+                }
+            } finally {
+                // Re-enable check button unless successfully validated
+                if (!this._addressValidated) { // Use an instance flag if needed
+                   if(checkBtn) checkBtn.disabled = false;
+                }
+            }
+        }; // End checkAvailability function
+
+        // Function to clear feedback and reset submit state on input change
+        const clearFeedback = () => {
           setFeedback('', '');
-          setSubmitEnabled(false);
+          setSubmitEnabled(false); // Disable submit when address changes
+          // Maybe disable check button until all fields have values?
+          if(checkBtn) checkBtn.disabled = !(address1Input?.value && cityInput?.value && stateInput?.value && zip5Input?.value);
         };
 
-        checkBtn.addEventListener('click', checkAvailability);
-        address1Input.addEventListener('input', clearFeedback);
-        cityInput.addEventListener('input', clearFeedback);
-        stateInput.addEventListener('input', clearFeedback);
-        zip5Input.addEventListener('input', clearFeedback);
+        // Attach event listeners if elements exist
+        if (checkBtn) checkBtn.addEventListener('click', checkAvailability);
+        if (address1Input) address1Input.addEventListener('input', clearFeedback);
+        if (cityInput) cityInput.addEventListener('input', clearFeedback);
+        if (stateInput) stateInput.addEventListener('input', clearFeedback);
+        if (zip5Input) zip5Input.addEventListener('input', clearFeedback);
 
-        // Cleanup event listeners when component is removed
-        this.listenTo(this.model, 'destroy', () => {
-          checkBtn.removeEventListener('click', checkAvailability);
-          address1Input.removeEventListener('input', clearFeedback);
-          cityInput.removeEventListener('input', clearFeedback);
-          stateInput.removeEventListener('input', clearFeedback);
-          zip5Input.removeEventListener('input', clearFeedback);
-        });
+        // Store listeners for cleanup if needed (using an instance property)
+        this._serviceSignupListeners = { checkAvailability, clearFeedback };
 
-        // Initialize Stripe embedded checkout
+        // --- Initialize Stripe Embedded Checkout (from original code) ---
         (async () => {
           try {
-            const stripeInstance = await loadStripe(stripeKey);
-            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
+            if (typeof Stripe === 'undefined') {
+                await loadStripe(stripeKey);
+                if (typeof Stripe === 'undefined') throw new Error("Stripe.js failed to load.");
+            }
+            const stripeInstance = Stripe(stripeKey);
 
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
-                const res = await fetch('/api/stripe/create-checkout-session', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
-                });
-                const { clientSecret } = await res.json();
-                return clientSecret;
+                try {
+                    const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', { // Ensure endpoint is correct
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
+                    });
+                    if (!res.ok) {
+                         const errorData = await res.json().catch(() => ({}));
+                         throw new Error(errorData.error || `Failed to create checkout session (Status: ${res.status})`);
+                    }
+                    const { clientSecret } = await res.json();
+                    if (!clientSecret) throw new Error("Client secret missing from response.");
+                    return clientSecret;
+                } catch(fetchErr) {
+                     console.error('[Service Signup View] Error fetching client secret:', fetchErr);
+                     if(errorMsgDiv) errorMsgDiv.textContent = `Payment init error: ${fetchErr.message}`;
+                     throw fetchErr;
+                }
               }
             });
 
-            const container = componentRootEl.querySelector('#embedded-checkout-container');
+            const container = componentRootEl.querySelector('#payment-element'); // ** Original used #payment-element ** Check serviceSignup template
             if (container) {
               checkout.mount(container);
+              console.log('[Service Signup View] Stripe Embedded Checkout mounted.');
+            } else {
+              console.error('[Service Signup View] Mount container #payment-element not found.');
+              if(errorMsgDiv) errorMsgDiv.textContent = 'Error: Payment form container not found.';
             }
           } catch (error) {
-            const errorMessage = componentRootEl.querySelector('#error-message');
-            if (errorMessage) errorMessage.textContent = error.message;
+            console.error('[Service Signup View] Stripe initialization error:', error);
+            if(errorMsgDiv) errorMsgDiv.textContent = `Payment Error: ${error.message}`;
           }
-        })();
-      }
-    }
-  });
+        })(); // End async IIFE for Stripe init
+      }, // End onRender
 
-  // Add service validation component type
-  domc.addType('Service Validation', {
-    isComponent: el => {
-      if (el.getAttribute && el.getAttribute('data-gjs-type') === 'service-validation') {
-        return { type: 'Service Validation' };
+      // Cleanup listeners on removal
+      onRemove() {
+         console.log('[Service Signup View] Component removed.');
+         // Remove listeners added in onRender if elements still exist
+         const checkBtn = this.el.querySelector('#check-availability');
+         const address1Input = this.el.querySelector('#address1');
+         // ... find other inputs ...
+         if (checkBtn && this._serviceSignupListeners?.checkAvailability) {
+             checkBtn.removeEventListener('click', this._serviceSignupListeners.checkAvailability);
+         }
+         if (address1Input && this._serviceSignupListeners?.clearFeedback) {
+             address1Input.removeEventListener('input', this._serviceSignupListeners.clearFeedback);
+             // ... remove listeners from other inputs ...
+         }
+         this._serviceSignupListeners = null; // Clear stored listeners
       }
-    },
+    } // End view
+  }); // End addType 'Service Signup'
+
+
+  // --- Updated Service Validation Component (From Previous Response) ---
+  domc.addType('Service Validation', {
+    isComponent: el => el.getAttribute && el.getAttribute('data-gjs-type') === 'service-validation' ? { type: 'Service Validation' } : null,
     model: {
       defaults: {
         tagName: 'div',
-        attributes: { 'data-gjs-type': 'service-validation' },
-        // Initialize with empty content, will be set in init()
-        content: '',
+        attributes: { 'data-gjs-type': 'service-validation', class: 'service-validation-wrapper' },
+        content: '', // Initial placeholder
         droppable: false,
         stylable: [],
         traits: [
@@ -463,111 +600,72 @@ const components = (editor, opts = {}) => {
             type: 'select',
             label: 'Select Service',
             name: 'selectedService',
-            options: [],
+            options: [ { id: '', name: 'Select a Service...' } ],
             changeProp: 1
           }
         ],
         stripeKey: null,
         services: [],
-        title: 'Service Validation'
+        selectedService: '',
+        title: 'Service Validation & Billing'
       },
       init() {
-        // Initialize with empty content
-        this.set('content', '');
-
-        // Load services first if needed, then load content
-        if (!this.get('services')?.length) {
-          this.fetchServices().finally(() => {
-            this.loadContent();
-          });
-        } else {
-          this.loadContent();
-        }
-
-        this.listenTo(this, 'change:selectedService', this.handleProductChange);
-        this.listenTo(this, 'change:stripeKey', this.handleDataChange);
-        this.listenTo(this, 'change:services', this.handleDataChange);
-
         this.fetchStripeKey();
-        // fetchServices is called above if needed
+        this.fetchServices();
+        this.listenTo(this, 'change:selectedService', this.handleServiceChange);
+        this.listenTo(this, 'change:stripeKey change:services', () => this.trigger('rerender'));
       },
-      handleProductChange() {
-        const selectedService = this.get('selectedService');
-        console.log('[Service Validation] Service changed to:', selectedService);
-
-        // Clear previous rendered state
-        this.set('renderedHTML', null);
-
-        // Load new content, the HTML capture happens in onRender
-        this.loadContent();
-      },
-
-      handleDataChange() {
-        console.log('[Service Validation Model] Stripe key or products updated.');
-        this.loadContent();
-        if (this.get('selectedService')) {
-          this.trigger('rerender');
-        }
-      },
-
-      loadContent() {
-        const selectedService = this.get('selectedService');
-        const services = this.get('services') || [];
-        const serviceData = services.find(s => s.id?.toString() === selectedService);
-
-        // Use saved HTML if available and matches the selected service
-        const savedHTML = this.get('renderedHTML');
-        const lastSavedService = this.get('lastSavedService');
-
-        if (savedHTML && lastSavedService === selectedService) {
-            this.set('content', savedHTML);
-            return;
-        }
-
-        if (selectedService && serviceData) {
-          this.set('content', serviceValidation(serviceData));
-        } else {
-          this.set('content', 'Please select a service from the settings panel.');
-        }
-
-        // Trigger immediate render if we have a selected service
-        if (selectedService) {
-          this.trigger('rerender');
-        }
+      handleServiceChange() {
+        console.log('[Service Validation Model] Service selection changed:', this.get('selectedService'));
+        this.trigger('rerender');
       },
       fetchStripeKey() {
-        fetch('/api/stripe/key')
-          .then(response => response.json())
+        if (this.get('stripeKey')) return;
+        fetch('http://192.168.50.14/settings/stripe-api-key') // Endpoint for publishable key
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
           .then(data => {
-            if (data && data.public_key) {
-              this.set('stripeKey', data.public_key);
+            if (data && data.stripe_api_key) { // Check for the correct key name
+              this.set('stripeKey', data.stripe_api_key);
+              console.log('[Service Validation Model] Stripe key fetched.');
             } else {
+              console.warn('[Service Validation Model] Stripe key not found in response.');
               this.set('stripeKey', null);
             }
           }).catch(err => {
+            console.error('[Service Validation Model] Error fetching Stripe key:', err);
             this.set('stripeKey', null);
           });
       },
       fetchServices() {
-        alert('Fetching services...');
-        return fetch('/api/product/all')
-          .then(response => response.text().then(text => text ? JSON.parse(text) : []))
+        if (this.get('services')?.length > 0) return;
+        console.log('[Service Validation Model] Fetching services...');
+        fetch('http://192.168.50.14/api/product/all') // Endpoint for services
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.text().then(text => text ? JSON.parse(text) : []);
+          })
           .then(data => {
-            const services = data.map(service => ({
-              id: service.id || Date.now() + Math.random(),
+            const services = (data || []).map(service => ({
+              id: service.id || `service_${Date.now()}_${Math.random()}`,
               title: service.name || 'Untitled Service',
               price: Math.max(0, Number(service.price)) || 0,
               description: service.description || '',
-              currency: service.currency
+              currency: service.currency || 'usd',
+              images: service.images || []
             }));
             this.set('services', services);
-            this.updateTraits();
+            console.log('[Service Validation Model] Services fetched:', services.length);
+            this.updateServiceTraitOptions();
           }).catch(error => {
+            console.error('[Service Validation Model] Error fetching services:', error);
             this.set('services', []);
-            this.updateTraits();
+            this.updateServiceTraitOptions();
           });
-        },
-      updateTraits() {
+      },
+      updateServiceTraitOptions() {
         const services = this.get('services') || [];
         const trait = this.getTrait('selectedService');
         if (trait) {
@@ -578,188 +676,56 @@ const components = (editor, opts = {}) => {
           }));
           options.unshift({ id: '', name: 'Select a Service...', value: '' });
           trait.set('options', options);
+          console.log('[Service Validation Model] Service trait options updated.');
+        } else {
+           console.warn('[Service Validation Model] Could not find selectedService trait to update.');
         }
       },
-
-      toJSON(opts = {}) {
-        // Capture current state directly from the model
-        const obj = {
-          attributes: this.getAttributes(),
-          components: this.get('components').toJSON(opts),
-          stripeKey: this.get('stripeKey'),
-          services: this.get('services'),
-          traits: this.get('traits'),
-          template: 'serviceValidation',
-          selectedService: this.get('selectedService')
-        };
-
-        // Include rendered HTML and form values if available
-        // These are captured in the view's onRender method
-        if (this.get('renderedHTML')) {
-          obj.renderedHTML = this.get('renderedHTML');
-          const feedbackEl = this.view?.el?.querySelector('#address-feedback');
-          if (feedbackEl) {
-            obj.validationState = {
-              message: feedbackEl.textContent,
-              color: feedbackEl.style.color
-            };
-          }
-          const inputs = this.view?.el?.querySelectorAll('input');
-          obj.formValues = {};
-          inputs?.forEach(input => {
-            obj.formValues[input.id] = input.value;
-          });
-        }
-        return obj;
-      }
+       toJSON(opts = {}) {
+         const obj = domc.getType('default').model.prototype.toJSON.call(this, opts);
+         obj.selectedService = this.get('selectedService');
+         return obj;
+       },
     },
     view: {
       init() {
-        this.listenTo(this.model, 'change:selectedService change:stripeKey change:services rerender', this.render);
-        this.listenTo(this, 'render', this.captureRenderedHTML);
+        this.listenTo(this.model, 'change:selectedService change:services change:stripeKey rerender', this.render);
       },
-
-      captureRenderedHTML() {
-        if (this.el) {
-          this.model.set({
-            renderedHTML: this.el.innerHTML,
-            lastSavedService: this.model.get('selectedService')
-          });
-        }
-      },
-
       onRender() {
         const model = this.model;
         const componentRootEl = this.el;
-        const stripeKey = model.get('stripeKey');
+        componentRootEl.innerHTML = ''; // Clear previous content
+
         const selectedServiceId = model.get('selectedService');
         const services = model.get('services') || [];
-        const selectedService = services.find(s => s.id?.toString() === selectedServiceId);
+        const selectedServiceData = services.find(s => s.id?.toString() === selectedServiceId);
+        const stripeKey = model.get('stripeKey');
 
-        if (!stripeKey || !selectedService) return;
+        let htmlContent;
 
-        // Initialize elements
-        const address1Input = componentRootEl.querySelector('#address1');
-        const cityInput = componentRootEl.querySelector('#city');
-        const stateInput = componentRootEl.querySelector('#state');
-        const zip5Input = componentRootEl.querySelector('#zip5');
-        const checkBtn = componentRootEl.querySelector('#check-availability');
-        const feedbackDiv = componentRootEl.querySelector('#address-feedback');
-        const submitBtn = componentRootEl.querySelector('#submit-button');
-
-        // Define view methods
-        this.setFeedback = (msg, color) => {
-          if (feedbackDiv) {
-            feedbackDiv.textContent = msg;
-            feedbackDiv.style.color = color;
-          }
-        };
-
-        this.setSubmitEnabled = (enabled) => {
-          if (submitBtn) {
-            if (enabled) {
-              submitBtn.removeAttribute('disabled');
-              submitBtn.classList.remove('opacity-50');
-            } else {
-              submitBtn.setAttribute('disabled', 'disabled');
-              submitBtn.classList.add('opacity-50');
-            }
-          }
-        };
-
-        this.setSubmitEnabled(false);
-
-        if (checkBtn) {
-          checkBtn.addEventListener('click', () => {
-            const address1 = address1Input ? address1Input.value.trim() : '';
-            const city = cityInput ? cityInput.value.trim() : '';
-            const state = stateInput ? stateInput.value.trim() : '';
-            const zip5 = zip5Input ? zip5Input.value.trim() : '';
-
-            this.setFeedback('⏳ Checking...', '#2563eb');
-            this.setSubmitEnabled(false);
-
-            if (!address1 || !city || !state || !zip5) {
-              this.setFeedback('Please complete all address fields', '#b91c1c');
-              return;
-            }
-
-            fetch('/api/geocode', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                address: { address1, city, state, zip5 },
-                zone_id: 1
-              })
-            })
-            .then(response => {
-              if (!response.ok) throw new Error('API error');
-              return response.json();
-            })
-            .then(data => {
-              if (data.inside_zone) {
-                this.setFeedback('✅ Address is valid', '#16a34a');
-                this.isValidated = true;
-                // Render the service signup form instead of checkout
-                componentRootEl.innerHTML = serviceSignup(selectedService);
-                // No Stripe initialization needed here
-              } else {
-                this.setFeedback('❌ Address not in service area', '#b91c1c');
-                this.isValidated = false;
-              }
-            })
-            .catch(error => {
-              this.setFeedback(`⚠️ Error: ${error.message}`, '#b91c1c');
-            });
-          });
+        if (!selectedServiceId) {
+          htmlContent = '<div class="p-4 text-center text-gray-500">Please select a service from the settings panel.</div>';
+        } else if (!selectedServiceData) {
+          htmlContent = '<div class="p-4 text-center text-red-600">Error: Selected service data not found. Please try re-selecting.</div>';
+        } else {
+          // Pass selected service data AND the stripe key to the template function
+          const serviceDataWithKey = { ...selectedServiceData, stripeKey: stripeKey };
+          // Call the updated serviceValidation function (which includes integrated billing logic)
+          htmlContent = serviceValidation(serviceDataWithKey);
         }
+
+        componentRootEl.innerHTML = htmlContent;
+
+        // The script inside the generated htmlContent handles its own initialization
+        console.log('[Service Validation View] Rendered content for service:', selectedServiceId || 'None');
       },
-
-      initStripeCheckout(containerEl, stripeKey, selectedService) {
-        (async () => {
-          try {
-            const stripe = await loadStripe(stripeKey);
-            if (!stripe) throw new Error('Stripe failed to load');
-
-            const checkout = await stripe.initEmbeddedCheckout({
-              fetchClientSecret: async () => {
-                const res = await fetch('/api/stripe/create-checkout-session', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    productId: selectedService.id,
-                    amount: selectedService.price
-                  })
-                });
-                const { clientSecret } = await res.json();
-                return clientSecret;
-              }
-            });
-
-            const container = containerEl.querySelector('#embedded-checkout-container');
-            if (container) checkout.mount(container);
-          } catch (error) {
-            console.error('Stripe checkout error:', error);
-          }
-        })();
+      onRemove() {
+        console.log('[Service Validation View] Component removed.');
       }
     }
-  });
+  }); // End addType 'Service Validation'
 
+}; // End of main components registration function
 
-    // Register Service Validation component
-    components.addType('service-validation', {
-      model: {
-        defaults: {
-          component: serviceValidation,
-          stylable: true
-        }
-
-      }
-    });
-
-}
-
-
-export { formatPrice };
-export default components;
+export { formatPrice }; // Export helper if needed elsewhere
+export default components; // Export the main registration function
