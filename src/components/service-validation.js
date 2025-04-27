@@ -332,19 +332,21 @@ export default (service = {}) => {
                   }
               };
               // Initialize Stripe Elements with client_secret
-              const appearance = {
-                  theme: 'stripe',
-                  variables: {
-                      colorPrimary: '#2563eb',
-                      colorBackground: '#ffffff',
-                      colorText: '#30313d',
-                      colorDanger: '#df1b41',
-                      fontFamily: 'Poppins, system-ui, sans-serif',
-                      spacingUnit: '4px',
-                      borderRadius: '4px'
-                  }
-              };
-              elements = stripe.elements({ appearance, clientSecret });
+              elements = stripe.elements({
+                  appearance: {
+                      theme: 'stripe',
+                      variables: {
+                          colorPrimary: '#2563eb',
+                          colorBackground: '#ffffff',
+                          colorText: '#30313d',
+                          colorDanger: '#df1b41',
+                          fontFamily: 'Poppins, system-ui, sans-serif',
+                          spacingUnit: '4px',
+                          borderRadius: '4px'
+                      }
+                  },
+                  clientSecret
+              });
               paymentElement = elements.create('payment');
               paymentElement = elements.create('payment');
 
