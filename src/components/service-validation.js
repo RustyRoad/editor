@@ -378,10 +378,12 @@ export default (service = {}) => {
                       'Authorization': 'Bearer ' + (serviceData?.authToken || '')
                   },
                   body: JSON.stringify({
+                  address: {
                       address1: address.address1,
                       city: address.city,
                       state: address.state,
                       zip5: address.zip5
+                  },
                   })
               });
               if (!resp.ok) {
