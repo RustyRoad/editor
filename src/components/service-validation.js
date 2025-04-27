@@ -510,7 +510,7 @@ export default (service = {}) => {
           else if (paymentIntent) {
               switch (paymentIntent.status) {
                   case 'processing':
-                      setPaymentMessage('Payment processing - we\'ll update you when complete');
+                      setPaymentMessage("Payment processing - we\'ll update you when complete");
                       break;
                   case 'requires_action':
                       setPaymentMessage('Additional authentication required');
