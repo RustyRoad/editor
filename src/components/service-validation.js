@@ -309,40 +309,28 @@ export default (service = {}) => {
                   throw new Error(errorMsg);
               }
               
-              const { status, session_id, client_secret } = await response.json();
-              if (status !== 'success') {
-                  throw new Error('Invalid checkout session response');
+              const { status, client_secret } = await response.json();
+              if (status || !client_secret?.startsWith('pi_')) {
+                  throw new Error('Invalid PaymentIntent response from server');
               }
 
-              // Handle both Checkout Session and PaymentIntent responses
-              if (client_secret && client_secret.startsWith('pi_')) {
-                  // PaymentIntent client secret
-                  clientSecret = client_secret;
-                  elements = stripe.elements({
-                      appearance: {
-                          theme: 'stripe',
-                          variables: {
-                              colorPrimary: '#2563eb',
-                              colorBackground: '#ffffff',
-                              colorText: '#30313d',
-                              colorDanger: '#df1b41',
-                              fontFamily: 'Poppins, system-ui, sans-serif',
-                              spacingUnit: '4px',
-                              borderRadius: '4px'
-                          }
-                      },
-                      clientSecret
-                  });
-                  paymentElement = elements.create('payment');
-              } else if (session_id) {
-                  // Checkout Session
-                  const checkout = await stripe.initEmbeddedCheckout({
-                      clientSecret: session_id
-                  });
-                  checkout.mount('#payment-element');
-              } else {
-                  throw new Error('Invalid payment response - missing required fields');
-              }
+              clientSecret = client_secret;
+              elements = stripe.elements({
+                  appearance: {
+                      theme: 'stripe',
+                      variables: {
+                          colorPrimary: '#2563eb',
+                          colorBackground: '#ffffff',
+                          colorText: '#30313d',
+                          colorDanger: '#df1b41',
+                          fontFamily: 'Poppins, system-ui, sans-serif',
+                          spacingUnit: '4px',
+                          borderRadius: '4px'
+                      }
+                  },
+                  clientSecret
+              });
+              paymentElement = elements.create('payment');
 
               const appearance = {
                   theme: 'stripe',
