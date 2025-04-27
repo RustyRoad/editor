@@ -58,8 +58,8 @@ export default (service = {}) => {
       <p class="text-sm text-gray-500">Once validated, you can proceed to checkout</p>
     </div>
   </div>
+  <script src="https://js.stripe.com/v3/"></script>
   <script>
-  const { loadStripe } = require('@stripe/stripe-js');
   const serviceDataJson = ${JSON.stringify(service)};
   (function () {
     const service = serviceDataJson;
