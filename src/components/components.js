@@ -700,11 +700,9 @@ const components = (editor, opts = {}) => {
               if (data.inside_zone) {
                 this.setFeedback('✅ Address is valid', '#16a34a');
                 this.isValidated = true;
-                console.log('[Service Validation] Selected Service:', selectedService);
-                const checkoutFormHTML = embeddedCheckout(selectedService);
-                console.log('[Service Validation] Generated Checkout HTML:', checkoutFormHTML);
-                componentRootEl.innerHTML = checkoutFormHTML;
-                this.initStripeCheckout(componentRootEl, stripeKey, selectedService);
+                // Render the service signup form instead of checkout
+                componentRootEl.innerHTML = serviceSignup(selectedService);
+                // No Stripe initialization needed here
               } else {
                 this.setFeedback('❌ Address not in service area', '#b91c1c');
                 this.isValidated = false;
