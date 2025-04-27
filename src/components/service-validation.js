@@ -59,6 +59,7 @@ export default (service = {}) => {
     </div>
   </div>
   <script>
+  const { loadStripe } = require('@stripe/stripe-js');
   const serviceDataJson = ${JSON.stringify(service)};
   (function () {
     const service = serviceDataJson;
@@ -80,6 +81,19 @@ export default (service = {}) => {
     function setFeedback(msg, color) {
       feedbackDiv.textContent = msg;
       feedbackDiv.style.color = color;
+    }
+
+    function setSubmitEnabled(enabled) {
+      const submitBtn = container.querySelector('#submit-button');
+      if (submitBtn) {
+        if (enabled) {
+          submitBtn.removeAttribute('disabled');
+          submitBtn.classList.remove('opacity-50');
+        } else {
+          submitBtn.setAttribute('disabled', 'disabled');
+          submitBtn.classList.add('opacity-50');
+        }
+      }
     }
 
     async function handleCheckAvailability() {
