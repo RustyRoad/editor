@@ -691,6 +691,15 @@ const components = (editor, opts = {}) => {
        toJSON(opts = {}) {
          const obj = domc.getType('default').model.prototype.toJSON.call(this, opts);
          obj.selectedService = this.get('selectedService');
+         
+         // Store the rendered HTML content
+         const selectedService = this.get('services').find(s => s.id === this.get('selectedService'));
+         if (selectedService) {
+           obj.renderedContent = serviceValidation({
+             ...selectedService,
+             stripeKey: this.get('stripeKey')
+           });
+         }
          return obj;
        },
     },
