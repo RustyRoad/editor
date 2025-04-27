@@ -59,7 +59,8 @@ export default (service = {}) => {
     </div>
   </div>
   <script>
-  (function (service) {
+  const serviceDataJson = ${JSON.stringify(service)};
+  (function () {
     const container = document.querySelector('.service-validation');
     if (!container) return;
   
@@ -79,11 +80,7 @@ export default (service = {}) => {
       feedbackDiv.textContent = msg;
       feedbackDiv.style.color = color;
     }
-function setSubmitEnabled(enabled) {
-  console.log('Submit enabled state:', enabled);
-  // TODO: Implement actual enabling/disabling of the submit element
-}
-  
+
     async function handleCheckAvailability() {
       const address = {
         address1: address1Input.value.trim(),
@@ -181,7 +178,7 @@ function setSubmitEnabled(enabled) {
       setFeedback('', '');
       setSubmitEnabled(false);
     });
-  })(service)
+  })(JSON.parse(serviceDataJson))
   </script>
   `;
 };
