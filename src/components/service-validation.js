@@ -252,6 +252,23 @@ export default (service = {}) => {
           }
       }
 
+      const fetchStripeKey = async () => {
+            if (serviceData && serviceData.stripeKey) {
+                return serviceData.stripeKey;
+            }
+            try {
+                const response = await fetch('/settings/stripe-api-key');
+                if (!response.ok) throw new Error('Failed to fetch Stripe key');
+                const data = await response.json();
+                return data?.stripe_api_key || null;
+            }
+            catch (err) {
+                console.error('Error fetching Stripe key:', err);
+                return null;
+            }
+        };
+        
+
       async function initializeStripeAndElements() {
           setLoading(true);
           setErrorMessage('');
