@@ -238,9 +238,6 @@ export default (service = {}) => {
 
       // --- Initialization Functions ---
       async function validateServiceData() {
-          if (!serviceData.priceId) {
-              throw new Error('Missing required field: priceId');
-          }
           if (serviceData && serviceData.stripeKey) {
               return serviceData.stripeKey;
           }
