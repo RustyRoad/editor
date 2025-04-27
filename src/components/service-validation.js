@@ -168,9 +168,9 @@ export default (service = {}) => {
           }
           async function fetchStripeKey() {
             try {
-              const response = await fetch('/api/stripe/key');
+              const response = await fetch('/settings/stripe-api-key');
               const data = await response.json();
-              return data?.public_key || null;
+              return data?.stripe_api_key || null;
             } catch (err) {
               return null;
             }
