@@ -1,6 +1,6 @@
 {
   "name": "@rustyroad/editor",
-  "version": "1.0.39",
+  "version": "1.0.40",
   "description": "A web-based editor for Rusty Road",
   "main": "dist/index.js",
   "repository": {

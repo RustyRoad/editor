@@ -79,7 +79,7 @@ const components = (editor, opts = {}) => {
       fetchStripeKey() {
         // Avoid redundant fetches
         if (this.get('stripeKey')) return;
-        fetch('/api/stripe/key') // Ensure this endpoint is correct
+        fetch('http://192.168.50.14/api/stripe/key') // Ensure this endpoint is correct
           .then(response => {
              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
              return response.json();
@@ -101,7 +101,7 @@ const components = (editor, opts = {}) => {
       fetchProducts() {
         // Avoid redundant fetches
         if (this.get('products')?.length > 0) return;
-        fetch('/api/products') // Ensure this endpoint is correct
+        fetch('http://192.168.50.14/api/products') // Ensure this endpoint is correct
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.text().then(text => text ? JSON.parse(text) : []); // Handle empty response
@@ -200,7 +200,7 @@ const components = (editor, opts = {}) => {
               // Fetch the client secret from the backend
               fetchClientSecret: async () => {
                 try {
-                    const res = await fetch('/api/stripe/create-checkout-session', { // Ensure endpoint is correct
+                    const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', { // Ensure endpoint is correct
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       // Send product ID and amount (or let backend derive amount from ID)
@@ -291,7 +291,7 @@ const components = (editor, opts = {}) => {
       // Fetch Stripe key (same as Embedded Checkout)
       fetchStripeKey() {
         if (this.get('stripeKey')) return;
-        fetch('/api/stripe/key')
+        fetch('http://192.168.50.14/api/stripe/key')
           .then(response => {
              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
              return response.json();
@@ -312,7 +312,7 @@ const components = (editor, opts = {}) => {
       // Fetch services (using the specific endpoint from original code)
       fetchProducts() { // Method name kept for consistency with listeners
         if (this.get('products')?.length > 0) return;
-        fetch('/api/product/all') // Endpoint from original code
+        fetch('http://192.168.50.14/api/product/all') // Endpoint from original code
           .then(response => {
              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
              return response.text().then(text => text ? JSON.parse(text) : []);
@@ -458,7 +458,7 @@ const components = (editor, opts = {}) => {
 
             try {
                 // Call the geocode/availability endpoint
-                const resp = await fetch('/api/geocode', { // Or /api/check-availability
+                const resp = await fetch('http://192.168.50.14/api/geocode', { // Or /api/check-availability
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -530,7 +530,7 @@ const components = (editor, opts = {}) => {
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
                 try {
-                    const res = await fetch('/api/stripe/create-checkout-session', { // Ensure endpoint is correct
+                    const res = await fetch('http://192.168.50.14/api/stripe/create-checkout-session', { // Ensure endpoint is correct
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ productId: selectedProduct.id, amount: selectedProduct.price })
@@ -585,14 +585,15 @@ const components = (editor, opts = {}) => {
   }); // End addType 'Service Signup'
 
 
-  // --- Updated Service Validation Component (From Previous Response) ---
+  // --- Updated Service Validation Component ---
   domc.addType('Service Validation', {
     isComponent: el => el.getAttribute && el.getAttribute('data-gjs-type') === 'service-validation' ? { type: 'Service Validation' } : null,
     model: {
       defaults: {
         tagName: 'div',
         attributes: { 'data-gjs-type': 'service-validation', class: 'service-validation-wrapper' },
-        content: '', // Initial placeholder
+        // Set initial content placeholder
+        content: '<div class="p-4 text-center text-gray-500">Please select a service from the settings panel.</div>',
         droppable: false,
         stylable: [],
         traits: [
@@ -603,53 +604,111 @@ const components = (editor, opts = {}) => {
             options: [ { id: '', name: 'Select a Service...' } ],
             changeProp: 1
           },
-          {
-            type: 'text',
-            label: 'Success Page URL',
-            name: 'successPage',
-            placeholder: '/success',
-            changeProp: 1
-          }
+           // Add other traits if needed (like success URL)
+          // {
+          //   type: 'text',
+          //   label: 'Success Page URL',
+          //   name: 'successPage', // Example trait
+          //   placeholder: '/payment-confirmation',
+          //   changeProp: 1
+          // }
         ],
+        // Model state
         stripeKey: null,
         services: [],
-        selectedService: '',
-        title: 'Service Validation & Billing'
+        selectedService: '', // Holds the ID
+        script: function() {
+          // This script will NOT be executed by default in the exported HTML
+          // It's primarily for logic within the editor's context if needed
+          // All essential runtime logic should be IN the serviceValidation template's script
+          console.log('Service Validation component script executed in editor context.');
+        },
+        title: 'Service Validation & Billing' // Component name in the editor UI
       },
+
       init() {
         this.fetchStripeKey();
         this.fetchServices();
+        // Listen for changes to the selected service trait
         this.listenTo(this, 'change:selectedService', this.handleServiceChange);
-        this.listenTo(this, 'change:stripeKey change:services', () => this.trigger('rerender'));
+        // Also listen for changes in fetched data that might require re-rendering content
+        // Note: We only re-render content on service change now.
+        // this.listenTo(this, 'change:stripeKey change:services', this.handleServiceChange); // Re-evaluate if needed
       },
+
+      // *** UPDATED: Handle service change and update model content ***
       handleServiceChange() {
-        console.log('[Service Validation Model] Service selection changed:', this.get('selectedService'));
-        this.trigger('rerender');
+        const selectedServiceId = this.get('selectedService');
+        const services = this.get('services') || [];
+        const stripeKey = this.get('stripeKey');
+        console.log('[Service Validation Model] Service selection changed:', selectedServiceId);
+
+        let newContent = '';
+        if (!selectedServiceId) {
+          newContent = '<div class="p-4 text-center text-gray-500">Please select a service from the settings panel.</div>';
+        } else {
+          const selectedServiceData = services.find(s => s.id?.toString() === selectedServiceId);
+          if (!selectedServiceData) {
+            newContent = '<div class="p-4 text-center text-red-600">Error: Selected service data not found. Please try re-selecting.</div>';
+          } else if (!stripeKey) {
+            newContent = '<div class="p-4 text-center text-orange-600">Warning: Stripe key not available. Payment processing may fail.</div>';
+            // Optionally, still render the form but show a warning
+             const serviceDataWithKey = { ...selectedServiceData, stripeKey: stripeKey };
+             newContent = serviceValidation(serviceDataWithKey); // Render form anyway
+          } else {
+            // Generate the full HTML including the script using the template function
+            const serviceDataWithKey = { ...selectedServiceData, stripeKey: stripeKey };
+            newContent = serviceValidation(serviceDataWithKey);
+          }
+        }
+
+        // *** IMPORTANT: Set the generated HTML to the 'content' attribute ***
+        // This ensures the content saved by GrapesJS includes the script tag.
+        this.set('content', newContent);
+
+        // Trigger a view update (optional, as changing 'content' might already do it)
+        // this.trigger('rerender'); // Usually not needed if 'content' change triggers view update
       },
+
       fetchStripeKey() {
+        // Avoid redundant fetch
         if (this.get('stripeKey')) return;
-        fetch('/settings/stripe-api-key') // Endpoint for publishable key
+        // Use the correct endpoint from your setup
+        fetch('http://192.168.50.14/settings/stripe-api-key')
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
           })
           .then(data => {
-            if (data && data.stripe_api_key) { // Check for the correct key name
+            if (data && data.stripe_api_key) {
               this.set('stripeKey', data.stripe_api_key);
               console.log('[Service Validation Model] Stripe key fetched.');
+              // If a service was already selected, regenerate content with the key
+              if (this.get('selectedService')) {
+                  this.handleServiceChange();
+              }
             } else {
               console.warn('[Service Validation Model] Stripe key not found in response.');
               this.set('stripeKey', null);
+               if (this.get('selectedService')) {
+                  this.handleServiceChange(); // Regenerate content (will show warning)
+              }
             }
           }).catch(err => {
             console.error('[Service Validation Model] Error fetching Stripe key:', err);
             this.set('stripeKey', null);
+             if (this.get('selectedService')) {
+                  this.handleServiceChange(); // Regenerate content (will show warning)
+              }
           });
       },
+
       fetchServices() {
+         // Avoid redundant fetch
         if (this.get('services')?.length > 0) return;
         console.log('[Service Validation Model] Fetching services...');
-        fetch('/api/product/all') // Endpoint for services
+         // Use the correct endpoint from your setup
+        fetch('http://192.168.50.14/api/product/all')
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.text().then(text => text ? JSON.parse(text) : []);
@@ -662,16 +721,22 @@ const components = (editor, opts = {}) => {
               description: service.description || '',
               currency: service.currency || 'usd',
               images: service.images || []
+              // Add any other fields needed by serviceValidation template
             }));
             this.set('services', services);
             console.log('[Service Validation Model] Services fetched:', services.length);
             this.updateServiceTraitOptions();
+             // If a service was previously selected but data wasn't ready, update content now
+            if (this.get('selectedService') && !this.get('content').includes('service-validation-container')) {
+                 this.handleServiceChange();
+            }
           }).catch(error => {
             console.error('[Service Validation Model] Error fetching services:', error);
             this.set('services', []);
             this.updateServiceTraitOptions();
           });
       },
+
       updateServiceTraitOptions() {
         const services = this.get('services') || [];
         const trait = this.getTrait('selectedService');
@@ -688,55 +753,49 @@ const components = (editor, opts = {}) => {
            console.warn('[Service Validation Model] Could not find selectedService trait to update.');
         }
       },
+
+       // *** UPDATED: Ensure 'content' is saved ***
        toJSON(opts = {}) {
+         // Start with the default serialization
          const obj = domc.getType('default').model.prototype.toJSON.call(this, opts);
+
+         // Ensure essential properties are included
          obj.selectedService = this.get('selectedService');
-         
-         // Store the rendered HTML content
-         const selectedService = this.get('services').find(s => s.id === this.get('selectedService'));
-         if (selectedService) {
-           obj.renderedContent = serviceValidation({
-             ...selectedService,
-             stripeKey: this.get('stripeKey')
-           });
-         }
+         // We don't typically save services/stripeKey in the final output,
+         // but ensure the 'content' reflects the latest state.
+         // The 'content' attribute is usually handled by the default toJSON,
+         // as we are setting it directly in handleServiceChange.
+         // If 'content' is missing or incorrect, explicitly set it here:
+         // obj.content = this.get('content');
+
+         console.log('[Service Validation Model] toJSON called, content length:', obj.content?.length);
          return obj;
        },
     },
     view: {
       init() {
-        this.listenTo(this.model, 'change:selectedService change:services change:stripeKey rerender', this.render);
+        // Listen only to 'change:content' or specific model props that affect the view directly
+        // 'rerender' might be redundant if 'change:content' is handled
+        this.listenTo(this.model, 'change:content', this.render);
       },
+
+      // *** UPDATED: Render directly from model's 'content' ***
       onRender() {
         const model = this.model;
         const componentRootEl = this.el;
-        componentRootEl.innerHTML = ''; // Clear previous content
 
-        const selectedServiceId = model.get('selectedService');
-        const services = model.get('services') || [];
-        const selectedServiceData = services.find(s => s.id?.toString() === selectedServiceId);
-        const stripeKey = model.get('stripeKey');
+        // Set the innerHTML directly from the model's content attribute
+        // This content should already include the <script> tag generated by serviceValidation
+        componentRootEl.innerHTML = model.get('content');
 
-        let htmlContent;
-
-        if (!selectedServiceId) {
-          htmlContent = '<div class="p-4 text-center text-gray-500">Please select a service from the settings panel.</div>';
-        } else if (!selectedServiceData) {
-          htmlContent = '<div class="p-4 text-center text-red-600">Error: Selected service data not found. Please try re-selecting.</div>';
-        } else {
-          // Pass selected service data AND the stripe key to the template function
-          const serviceDataWithKey = { ...selectedServiceData, stripeKey: stripeKey };
-          // Call the updated serviceValidation function (which includes integrated billing logic)
-          htmlContent = serviceValidation(serviceDataWithKey);
-        }
-
-        componentRootEl.innerHTML = htmlContent;
-
-        // The script inside the generated htmlContent handles its own initialization
-        console.log('[Service Validation View] Rendered content for service:', selectedServiceId || 'None');
+        // No need to call serviceValidation() here anymore
+        // No need to manually run scripts here - they should run when the component is rendered in the editor's iframe
+        console.log('[Service Validation View] Rendered content from model.');
       },
+
       onRemove() {
         console.log('[Service Validation View] Component removed.');
+        // Add cleanup if necessary
       }
     }
   }); // End addType 'Service Validation'
