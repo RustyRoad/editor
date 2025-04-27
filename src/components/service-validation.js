@@ -58,5 +58,118 @@ export default (service = {}) => {
       <p class="text-sm text-gray-500">Once validated, you can proceed to checkout</p>
     </div>
   </div>
-`;
+  <script>
+  (function() {
+      const container = document.querySelector('.service-validation');
+      if (!container) return;
+    
+      const address1Input = container.querySelector('#address1');
+      const cityInput = container.querySelector('#city');
+      const stateInput = container.querySelector('#state');
+      const zip5Input = container.querySelector('#zip5');
+      const checkBtn = container.querySelector('#check-availability');
+      const feedbackDiv = container.querySelector('#address-feedback');
+    
+      if (!checkBtn || !feedbackDiv) {
+        console.error('Required elements not found');
+        return;
+      }
+    
+      function setFeedback(msg, color) {
+        feedbackDiv.textContent = msg;
+        feedbackDiv.style.color = color;
+      }
+    
+      async function handleCheckAvailability() {
+        const address = {
+          address1: address1Input.value.trim(),
+          city: cityInput.value.trim(),
+          state: stateInput.value.trim(),
+          zip5: zip5Input.value.trim()
+        };
+      
+        setFeedback('⏳ Checking...', '#2563eb');
+      
+        if (!address.address1 || !address.city || !address.state || !address.zip5) {
+          const missingFields = [];
+          if (!address.address1) missingFields.push('Street Address');
+          if (!address.city) missingFields.push('City');
+          if (!address.state) missingFields.push('State');
+          if (!address.zip5) missingFields.push('ZIP Code');
+  
+          setFeedback("⚠️ Please fill in all fields: " + missingFields.join(', '), '#b91c1c');
+          return;
+        }
+      
+        try {
+          const resp = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: {
+                address1: address.address1,
+                address2: null,
+                city: address.city,
+                state: address.state,
+                zip5: address.zip5,
+                zip4: null
+              },
+              zone_id: 1
+            })
+          });
+        
+          if (!resp.ok) throw new Error('API error');
+  
+          const data = await resp.json();
+          if (data.inside_zone) {
+            setFeedback('✅ Address is valid for service', '#16a34a');
+            localStorage.setItem("validatedAddress", JSON.stringify(address));
+                  initStripeCheckout(containerEl, stripeKey, selectedService) {
+                    (async () => {
+                      try {
+                        const stripe = await loadStripe(stripeKey);
+                        if (!stripe) throw new Error('Stripe failed to load');
+            
+                        const checkout = await stripe.initEmbeddedCheckout({
+                          fetchClientSecret: async () => {
+                            const res = await fetch('/api/stripe/create-checkout-session', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                productId: selectedService.id,
+                                amount: selectedService.price
+                              })
+                            });
+                            const { clientSecret } = await res.json();
+                            return clientSecret;
+                          }
+                        });
+            
+                        const container = containerEl.querySelector('#embedded-checkout-container');
+                        if (container) checkout.mount(container);
+                      } catch (error) {
+                        console.error('Stripe checkout error:', error);
+                      }
+                    })();
+                  }
+          } else {
+            setFeedback('❌ Address is not serviceable', '#b91c1c');
+          }
+        } catch (error) {
+          setFeedback('⚠️ Error validating address', '#b91c1c');
+          console.error('Validation error:', error);
+        }
+      }
+    
+      checkBtn.addEventListener('click', handleCheckAvailability);
+  
+      address1Input.addEventListener('input', function() {
+        setFeedback('', '');
+        setSubmitEnabled(false);
+      });
+  })()
+  </script>
+  
+  
+  `;
 };
