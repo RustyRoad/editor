@@ -19,10 +19,10 @@ const formatPrice = (amount, currency) => {
 // Register components with GrapesJS
 const components = (editor, opts = {}) => {
   const components = editor.DomComponents;
+  const domc = editor.DomComponents; // Alias for clarity
+  const componentType = 'Checkout 2 Step'; // Seems unused, but keeping for now
 
-
-
-  // Register other existing components
+  // Register webinar-checkout-1 component
   components.addType('webinar-checkout-1', {
     model: {
       defaults: {
@@ -32,27 +32,7 @@ const components = (editor, opts = {}) => {
     }
   });
 
-  components.addType('embedded-checkout', {
-    model: {
-      defaults: {
-        component: embeddedCheckout,
-        stylable: true
-      }
-    }
-  });
-
-  components.addType('service-signup', {
-    model: {
-      defaults: {
-        component: serviceSignup,
-        stylable: true
-      }
-    }
-  });
-  const domc = editor.DomComponents;
-  const componentType = 'Checkout 2 Step';
-  
-  // Add Embedded Checkout component type
+  // Register Embedded Checkout component
   domc.addType('Embedded Checkout', {
     isComponent: el => {
       if (el.getAttribute && el.getAttribute('data-gjs-type') === 'embedded-checkout') {
@@ -71,6 +51,7 @@ const components = (editor, opts = {}) => {
             type: 'select',
             label: 'Select Product',
             name: 'selectedProduct',
+
             options: [],
             changeProp: 1
           }
@@ -83,7 +64,7 @@ const components = (editor, opts = {}) => {
         this.listenTo(this, 'change:selectedProduct', this.handleProductChange);
         this.listenTo(this, 'change:stripeKey', this.handleDataChange);
         this.listenTo(this, 'change:products', this.handleDataChange);
-        
+
         this.fetchStripeKey();
         this.fetchProducts();
       },
@@ -153,7 +134,7 @@ const components = (editor, opts = {}) => {
         const selectedProductId = model.get('selectedProduct');
         const products = model.get('products') || [];
         const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
-        
+
         let htmlContent;
         if (!selectedProductId) {
           htmlContent = 'Please select a product from the settings panel.';
@@ -165,12 +146,12 @@ const components = (editor, opts = {}) => {
         componentRootEl.innerHTML = htmlContent;
 
         if (!stripeKey || !selectedProduct) return;
-        
+
         (async () => {
           try {
             const stripeInstance = await loadStripe(stripeKey);
             if (!stripeInstance) throw new Error("Stripe.js failed to load.");
-            
+
             const checkout = await stripeInstance.initEmbeddedCheckout({
               fetchClientSecret: async () => {
                 const res = await fetch('/api/stripe/create-checkout-session', {
@@ -196,7 +177,7 @@ const components = (editor, opts = {}) => {
     }
   });
 
-  // Add Service Signup component type
+  // Register Service Signup component
   domc.addType('Service Signup', {
     isComponent: el => {
       if (el.getAttribute && el.getAttribute('data-gjs-type') === 'service-signup') {
@@ -215,7 +196,7 @@ const components = (editor, opts = {}) => {
             type: 'select',
             label: 'Select Service',
             name: 'selectedProduct',
-            
+
             options: [],
             changeProp: 1
           }
@@ -288,6 +269,7 @@ const components = (editor, opts = {}) => {
       },
 
       toJSON(opts = {}) {
+        // Capture current state directly from the model
         const obj = {
           attributes: this.getAttributes(),
           components: this.get('components').toJSON(opts),
@@ -296,7 +278,7 @@ const components = (editor, opts = {}) => {
           traits: this.get('traits'),
           template: 'serviceSignup'
         };
-        
+
         if (this.view && this.view.el) {
           obj.renderedHTML = this.view.el.innerHTML;
           const inputs = this.view.el.querySelectorAll('input');
@@ -634,19 +616,18 @@ const components = (editor, opts = {}) => {
     view: {
       init() {
         this.listenTo(this.model, 'change:selectedService change:stripeKey change:services rerender', this.render);
-        // Listen to the 'render' event to capture HTML after the view updates
         this.listenTo(this, 'render', this.captureRenderedHTML);
       },
 
       captureRenderedHTML() {
-          // Capture the innerHTML after the view has rendered
-          if (this.el) {
-              this.model.set({
-                renderedHTML: this.el.innerHTML,
-                lastSavedService: this.model.get('selectedService')
-              });
-          }
+        if (this.el) {
+          this.model.set({
+            renderedHTML: this.el.innerHTML,
+            lastSavedService: this.model.get('selectedService')
+          });
+        }
       },
+
       onRender() {
         const model = this.model;
         const componentRootEl = this.el;
@@ -655,35 +636,26 @@ const components = (editor, opts = {}) => {
         const services = model.get('services') || [];
         const selectedService = services.find(s => s.id?.toString() === selectedServiceId);
 
-        // The content is already set in the model's loadContent method
-        // We just need to ensure the view updates based on model changes
-        // The actual HTML content is now managed by the model's 'content' attribute
-        // The onRender method's primary role is to initialize event listeners and external libraries
-
-        // Re-initialize address validation and Stripe if needed after render
-        // This part of the onRender logic seems correct for initializing interactive elements
-        // based on the rendered HTML content.
-
-        // No need to set innerHTML here, it's handled by the framework based on model.get('content')
-
         if (!stripeKey || !selectedService) return;
 
-        // Initialize address validation
+        // Initialize elements
         const address1Input = componentRootEl.querySelector('#address1');
         const cityInput = componentRootEl.querySelector('#city');
         const stateInput = componentRootEl.querySelector('#state');
         const zip5Input = componentRootEl.querySelector('#zip5');
         const checkBtn = componentRootEl.querySelector('#check-availability');
         const feedbackDiv = componentRootEl.querySelector('#address-feedback');
-
         const submitBtn = componentRootEl.querySelector('#submit-button');
-        
-        function setFeedback(msg, color) {
-          feedbackDiv.textContent = msg;
-          feedbackDiv.style.color = color;
-        }
 
-        function setSubmitEnabled(enabled) {
+        // Define view methods
+        this.setFeedback = (msg, color) => {
+          if (feedbackDiv) {
+            feedbackDiv.textContent = msg;
+            feedbackDiv.style.color = color;
+          }
+        };
+
+        this.setSubmitEnabled = (enabled) => {
           if (submitBtn) {
             if (enabled) {
               submitBtn.removeAttribute('disabled');
@@ -693,67 +665,62 @@ const components = (editor, opts = {}) => {
               submitBtn.classList.add('opacity-50');
             }
           }
-        }
+        };
 
-        setSubmitEnabled(false);
+        this.setSubmitEnabled(false);
 
-        checkBtn.addEventListener('click', () => {
-        
-          const address1 = address1Input.value.trim();
-          const city = cityInput.value.trim();
-          const state = stateInput.value.trim();
-          const zip5 = zip5Input.value.trim();
-          setFeedback('⏳ Checking...', '#2563eb');
-          if (!address1 || !city || !state || !zip5) {
-            setFeedback('Please complete all address fields.', '#b91c1c');
-            return;
-          }
-          fetch('/api/geocode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              address: {
-                address1,
-                address2: null,
-                city,
-                state,
-                zip5,
-                zip4: null
-              },
-              zone_id: 1
+        if (checkBtn) {
+          checkBtn.addEventListener('click', () => {
+            const address1 = address1Input ? address1Input.value.trim() : '';
+            const city = cityInput ? cityInput.value.trim() : '';
+            const state = stateInput ? stateInput.value.trim() : '';
+            const zip5 = zip5Input ? zip5Input.value.trim() : '';
+
+            this.setFeedback('⏳ Checking...', '#2563eb');
+            this.setSubmitEnabled(false);
+
+            if (!address1 || !city || !state || !zip5) {
+              this.setFeedback('Please complete all address fields', '#b91c1c');
+              return;
+            }
+
+            fetch('/api/geocode', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                address: { address1, city, state, zip5 },
+                zone_id: 1
+              })
             })
-          })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('API error');
-            }
-            return response.json();
-          })
-          .then(data => {
-            if (data.inside_zone) {
-              setFeedback('✅ Address is in service area.', '#16a34a');
-              this.isValidated = true;
-              // Show checkout form
-              const checkoutForm = embeddedCheckout(selectedService);
-              componentRootEl.innerHTML = checkoutForm;
-              // Initialize Stripe embedded checkout
-              this.initStripeCheckout(componentRootEl, stripeKey, selectedService);
-            } else {
-              setFeedback('❌ Address is outside the service area.', '#b91c1c');
-              this.isValidated = false;
-            }
+            .then(response => {
+              if (!response.ok) throw new Error('API error');
+              return response.json();
+            })
+            .then(data => {
+              if (data.inside_zone) {
+                this.setFeedback('✅ Address is valid', '#16a34a');
+                this.isValidated = true;
+                componentRootEl.innerHTML = embeddedCheckout(selectedService);
+                this.initStripeCheckout(componentRootEl, stripeKey, selectedService);
+              } else {
+                this.setFeedback('❌ Address not in service area', '#b91c1c');
+                this.isValidated = false;
+              }
+            })
+            .catch(error => {
+              this.setFeedback(`⚠️ Error: ${error.message}`, '#b91c1c');
+            });
           });
-        });
-
+        }
       },
-      
+
       initStripeCheckout(containerEl, stripeKey, selectedService) {
         (async () => {
           try {
-            const stripeInstance = await loadStripe(stripeKey);
-            if (!stripeInstance) throw new Error("Stripe.js failed to load.");
-            
-            const checkout = await stripeInstance.initEmbeddedCheckout({
+            const stripe = await loadStripe(stripeKey);
+            if (!stripe) throw new Error('Stripe failed to load');
+
+            const checkout = await stripe.initEmbeddedCheckout({
               fetchClientSecret: async () => {
                 const res = await fetch('/api/stripe/create-checkout-session', {
                   method: 'POST',
@@ -768,13 +735,10 @@ const components = (editor, opts = {}) => {
               }
             });
 
-            const checkoutContainer = containerEl.querySelector('#embedded-checkout-container');
-            if (checkoutContainer) {
-              checkout.mount(checkoutContainer);
-            }
+            const container = containerEl.querySelector('#embedded-checkout-container');
+            if (container) checkout.mount(container);
           } catch (error) {
-            const errorMessage = containerEl.querySelector('#error-message');
-            if (errorMessage) errorMessage.textContent = error.message;
+            console.error('Stripe checkout error:', error);
           }
         })();
       }
@@ -792,7 +756,7 @@ const components = (editor, opts = {}) => {
 
       }
     });
-  
+
 }
 
 
