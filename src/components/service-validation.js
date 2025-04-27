@@ -61,6 +61,7 @@ export default (service = {}) => {
   <script>
   const serviceDataJson = ${JSON.stringify(service)};
   (function () {
+    const service = serviceDataJson;
     const container = document.querySelector('.service-validation');
     if (!container) return;
   
@@ -178,7 +179,7 @@ export default (service = {}) => {
       setFeedback('', '');
       setSubmitEnabled(false);
     });
-  })(JSON.parse(serviceDataJson))
+  })();
   </script>
   `;
 };
