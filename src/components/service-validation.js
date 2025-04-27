@@ -267,7 +267,7 @@ export default (service = {}) => {
                 return null;
             }
         };
-        
+
 
       async function initializeStripeAndElements() {
           setLoading(true);
@@ -294,7 +294,7 @@ export default (service = {}) => {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                      price_id: serviceData.priceId,
+                      product_id: serviceData.id,
                       quantity: 1, // Default quantity
                       success_url: window.location.href.split('?')[0] + '?payment_status=success',
                       cancel_url: window.location.href.split('?')[0] + '?payment_status=cancelled'

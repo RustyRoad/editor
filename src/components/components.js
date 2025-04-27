@@ -717,7 +717,7 @@ const components = (editor, opts = {}) => {
             const services = (data || []).map(service => ({
               id: service.id || `service_${Date.now()}_${Math.random()}`,
               title: service.name || 'Untitled Service',
-              price: Math.max(0, Number(service.price)) || 0,
+              price: service.price || 0,
               description: service.description || '',
               currency: service.currency || 'usd',
               images: service.images || []
