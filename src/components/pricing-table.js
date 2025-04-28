@@ -154,15 +154,15 @@ export default (editor, opts = {}) => {
           // Update data-service attribute on the newly added button
           const buttonComp = priceButtonContainer.components().filter(comp => comp.get('tagName') === 'button')[0];
           if (buttonComp) {
-              const serviceId = this.get('serviceId');
-              const serviceData = { // Construct a basic service data object from model properties
-                  id: serviceId,
-                  title: this.get('cardTitle'),
-                  description: this.get('cardDescription'),
-                  price: parseFloat(this.get('cardPrice')?.replace(/[^0-9.-]+/g,"")) || 0, // Attempt to parse price
-                  // Add other relevant properties if stored on the model
-              };
-              buttonComp.addAttributes({ 'data-service': JSON.stringify(serviceData) });
+            const serviceId = this.get('serviceId');
+            const serviceData = { // Construct a basic service data object from model properties
+              id: serviceId,
+              title: this.get('cardTitle'),
+              description: this.get('cardDescription'),
+              price: parseFloat(this.get('cardPrice')?.replace(/[^0-9.-]+/g, "")) || 0, // Attempt to parse price
+              // Add other relevant properties if stored on the model
+            };
+            buttonComp.addAttributes({ 'data-service': JSON.stringify(serviceData) });
           }
         }
       },
@@ -266,35 +266,51 @@ export default (editor, opts = {}) => {
         script: `
           (function() {
             const container = document.querySelector('.pricing-table-container');
-            if (!container) {
-              console.error('Pricing table container not found in client script.');
-              return;
+            if (!container) return console.error('Pricing table container not found');
+
+            function showServiceModal(serviceData) {
+              // Create modal container
+              const modal = document.createElement('div');
+              modal.style.cssText = \`
+                position:fixed; top:0; left:0; width:100%; height:100%;
+                background:rgba(0,0,0,0.5); display:flex; justify-content:center;
+                align-items:center; z-index:1000;
+              \`;
+
+              // Basic validation
+              if (!serviceData?.id || typeof serviceData.price === 'number') {
+                modal.innerHTML = '<div style="background:white;padding:2rem">Invalid service data</div>';
+                document.body.appendChild(modal);
+                return;
+              }
+
+              // Build modal content
+              const price = (serviceData.price/100).toFixed(2);
+              modal.innerHTML = \`
+                <div style="background:white;padding:2rem;border-radius:8px;max-width:600px;width:100%;position:relative">
+                  <button onclick="this.closest('div[style^=\"position:fixed\"]').remove()"
+                    style="position:absolute;top:20px;right:20px;background:none;border:none;font-size:24px;cursor:pointer">
+                    ×
+                  </button>
+                  <h2 style="font-size:1.25rem;font-weight:bold;margin-bottom:1rem">\${serviceData.title}</h2>
+                  <p style="margin-bottom:1rem">\${serviceData.description || 'No description'}</p>
+                  <p style="font-size:1.5rem;font-weight:600;margin-bottom:1rem">$\${price}</p>
+                  <p>Please contact support to complete your purchase.</p>
+                </div>
+              \`;
+
+              document.body.appendChild(modal);
             }
 
-            const validationFn = (function() {
-              // Preserve this function name - used in service validation
-              const serviceValidationFn = function(serviceData) {
-                try {
-                  /*! preserve-function */
-                  ${validationFnString.replace('function (', 'function validateService(')};
-                  return validateService(serviceData);
-                } catch (e) {
-                  console.error('Service validation error:', e);
-                  return '<div class="text-red-600 p-4">Error validating service</div>';
-                }
-              };
-              return serviceValidationFn;
-            })();
-
+            // Attach click handlers
             container.querySelectorAll('.gjs-pricing-buy-button').forEach(button => {
-              button.addEventListener('click', (event) => {
+              button.addEventListener('click', (e) => {
                 try {
-                  const serviceData = JSON.parse(event.target.getAttribute('data-service'));
-                  validationFn(serviceData);
-                  console.log('Called service validation with service data:', serviceData);
-                } catch (e) {
-                  console.error('Error processing service selection:', e);
-                  alert('Error processing service selection. Please try again.');
+                  const serviceData = JSON.parse(e.target.getAttribute('data-service'));
+                  showServiceModal(serviceData);
+                } catch (err) {
+                  console.error('Error showing service modal:', err);
+                  alert('Error processing selection. Please try again.');
                 }
               });
             });
@@ -366,9 +382,9 @@ export default (editor, opts = {}) => {
         });
         console.log('[Pricing Table Model] Product traits updated.');
         console.log('[Pricing Table Model] Current product selections:', {
-            product1: this.get('product1'),
-            product2: this.get('product2'),
-            product3: this.get('product3')
+          product1: this.get('product1'),
+          product2: this.get('product2'),
+          product3: this.get('product3')
         });
       },
 
@@ -379,15 +395,15 @@ export default (editor, opts = {}) => {
 
         // Clear existing components except the main container if it exists
         const existingContainer = this.components().filter(comp => comp.get('attributes')['data-gjs-type'] === 'pricing-table-container')[0];
-         if (existingContainer) {
-             existingContainer.empty(); // Clear inner components
-         } else {
-             this.empty(); // Clear all components if container doesn't exist (shouldn't happen with this structure)
-         }
+        if (existingContainer) {
+          existingContainer.empty(); // Clear inner components
+        } else {
+          this.empty(); // Clear all components if container doesn't exist (shouldn't happen with this structure)
+        }
 
 
         if (fetchError) {
-           this.append('<div class="text-center text-red-600 p-4">Error loading pricing data.</div>');
+          this.append('<div class="text-center text-red-600 p-4">Error loading pricing data.</div>');
         } else {
           // Filter services based on selectedProducts trait
           const selectedProductIds = [
@@ -398,86 +414,88 @@ export default (editor, opts = {}) => {
           const displayedServices = services.filter(service => selectedProductIds.includes(service.id?.toString()));
 
           if (displayedServices.length === 0 && selectedProductIds.length > 0) {
-              this.append('<div class="text-center text-orange-600 p-4">Selected services not found. Please re-select.</div>');
+            this.append('<div class="text-center text-orange-600 p-4">Selected services not found. Please re-select.</div>');
           } else if (displayedServices.length === 0 && selectedProductIds.length === 0 && services.length > 0) {
-               this.append('<div class="text-center text-gray-500 p-4">Please select services from the settings panel.</div>');
+            this.append('<div class="text-center text-gray-500 p-4">Please select services from the settings panel.</div>');
           }
-           else if (displayedServices.length === 0 && selectedProductIds.length === 0 && services.length === 0) {
-              this.append('<div class="text-center text-gray-500 p-4">No services available.</div>');
-         }
+          else if (displayedServices.length === 0 && selectedProductIds.length === 0 && services.length === 0) {
+            this.append('<div class="text-center text-gray-500 p-4">No services available.</div>');
+          }
           else {
-             // Create or get the grid container
-             let gridContainer = this.components().filter(comp => comp.get('attributes').class?.includes('pricing-table-grid'))[0];
-             if (!gridContainer) {
-                 const gridCols = this.get('gridCols') || 'grid-cols-3';
-                 const gridGap = this.get('gridGap') || 'gap-6';
-                 gridContainer = this.components().add({
-                     tagName: 'div',
-                     attributes: { class: `pricing-table-grid grid ${gridCols} ${gridGap} p-4` },
-                     droppable: '.pricing-table-card', // Only allow pricing-card components inside
-                     components: [] // Start with empty components
-                 }, { at: 0 }); // Add as the first component
-             } else {
-                 // Update grid classes if container already exists
-                 const gridCols = this.get('gridCols') || 'grid-cols-3';
-                 const gridGap = this.get('gridGap') || 'gap-6';
-                 const currentClasses = gridContainer.get('attributes').class.split(' ');
-                 const newClasses = currentClasses.filter(cls => !cls.startsWith('grid-cols-') && !cls.startsWith('gap-'));
-                 newClasses.push(gridCols);
-                 newClasses.push(gridGap);
-                 gridContainer.set('attributes', { ...gridContainer.get('attributes'), class: newClasses.join(' ') });
-                 gridContainer.empty(); // Clear existing cards to re-add based on selection
-             }
+            // Create or get the grid container
+            let gridContainer = this.components().filter(comp => comp.get('attributes').class?.includes('pricing-table-grid'))[0];
+            if (!gridContainer) {
+              const gridCols = this.get('gridCols') || 'grid-cols-3';
+              const gridGap = this.get('gridGap') || 'gap-6';
+              gridContainer = this.components().add({
+                tagName: 'div',
+                attributes: { class: `pricing-table-grid grid ${gridCols} ${gridGap} p-4` },
+                droppable: '.pricing-table-card', // Only allow pricing-card components inside
+                components: [] // Start with empty components
+              }, { at: 0 }); // Add as the first component
+            } else {
+              // Update grid classes if container already exists
+              const gridCols = this.get('gridCols') || 'grid-cols-3';
+              const gridGap = this.get('gridGap') || 'gap-6';
+              const currentClasses = gridContainer.get('attributes').class.split(' ');
+              const newClasses = currentClasses.filter(cls => !cls.startsWith('grid-cols-') && !cls.startsWith('gap-'));
+              newClasses.push(gridCols);
+              newClasses.push(gridGap);
+              gridContainer.set('attributes', { ...gridContainer.get('attributes'), class: newClasses.join(' ') });
+              gridContainer.empty(); // Clear existing cards to re-add based on selection
+            }
 
 
-             // Get features for each product
-             const productFeatures = {
-               product1: this.get('features1')?.split(',').map(f => f.trim()).filter(f => f) || [],
-               product2: this.get('features2')?.split(',').map(f => f.trim()).filter(f => f) || [],
-               product3: this.get('features3')?.split(',').map(f => f.trim()).filter(f => f) || []
-             };
+            // Get features for each product
+            const productFeatures = {
+              product1: this.get('features1')?.split(',').map(f => f.trim()).filter(f => f) || [],
+              product2: this.get('features2')?.split(',').map(f => f.trim()).filter(f => f) || [],
+              product3: this.get('features3')?.split(',').map(f => f.trim()).filter(f => f) || []
+            };
 
-             // Add pricing-card components for each selected service
-             console.log('[Pricing Table Model] Displaying services:', displayedServices);
-             displayedServices.forEach((service, index) => {
-               const productId = ['product1', 'product2', 'product3'][index];
-               const features = productFeatures[productId];
+            // Add pricing-card components for each selected service
+            console.log('[Pricing Table Model] Displaying services:', displayedServices);
+            displayedServices.forEach((service, index) => {
+              const productId = ['product1', 'product2', 'product3'][index];
+              const features = productFeatures[productId];
 
-               // Add a pricing-card component
-               gridContainer.append({
-                   type: 'pricing-card', // Use the nested component type
-                   // Pass data to the pricing-card model
-                   cardTitle: service.title,
-                   cardDescription: service.description,
-                   cardFeatures: features.join('\n'), // Pass features as newline-separated string
-                   cardPrice: formatPrice(service.price, service.currency),
-                   buttonText: 'Select Plan', // Or customize if needed
-                   serviceId: service.id?.toString(), // Pass service ID
-                   // The inner components of the pricing card are now defined in the pricing-card type defaults
-                   // We don't need to define them here unless we want to override the defaults.
-                   // The pricing-card's updateComponents method will handle setting the content based on traits.
-                   // We need to ensure the data-service attribute is set on the button within the pricing-card.
-                   // This should be handled by the pricing-card's updateComponents or toHTML method.
-                   // Let's add a toHTML method to the pricing-card to set the data-service attribute.
-               });
-             });
+              // Add a pricing-card component
+              gridContainer.append({
+                type: 'pricing-card', // Use the nested component type
+                // Pass data to the pricing-card model
+                cardTitle: service.title,
+                cardDescription: service.description,
+                cardFeatures: features.join('\n'), // Pass features as newline-separated string
+                cardPrice: formatPrice(service.price, service.currency),
+                buttonText: 'Select Plan', // Or customize if needed
+                serviceId: service.id?.toString(), // Pass service ID
+                // The inner components of the pricing card are now defined in the pricing-card type defaults
+                // We don't need to define them here unless we want to override the defaults.
+                // The pricing-card's updateComponents method will handle setting the content based on traits.
+                // We need to ensure the data-service attribute is set on the button within the pricing-card.
+                // This should be handled by the pricing-card's updateComponents or toHTML method.
+                // Let's add a toHTML method to the pricing-card to set the data-service attribute.
+              });
+            });
 
-             // The content attribute is no longer used to hold the full HTML structure.
-             // The structure is defined by the nested components.
-             // We can remove the line setting the content attribute.
-             // this.set('content', pricingHtml); // Remove this line
-         }
-       }
-        }
-      },
-
-      view: {
-        onRender() {
-          // The script is now included via the model's 'script' property
-          // and the component's inner structure is defined by nested components.
-          // No need to manually render content or execute script here.
-          console.log('[Pricing Table View] Rendered with nested components.');
+            // The content attribute is no longer used to hold the full HTML structure.
+            // The structure is defined by the nested components.
+            // We can remove the line setting the content attribute.
+            // this.set('content', pricingHtml); // Remove this line
+          }
         }
       }
-    });
-  };
+    },
+
+    view: {
+      onRender() {
+        // The script is now included via the model's 'script' property
+        // and the component's inner structure is defined by nested components.
+        // No need to manually render content or execute script here.
+        console.log('[Pricing Table View] Rendered with nested components.');
+      }
+    }
+  });
+
+
+};
