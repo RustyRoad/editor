@@ -280,13 +280,18 @@ export default (editor, opts = {}) => {
               // Basic validation - check for required fields
               if (!serviceData?.id || typeof serviceData.price !== 'number' || !serviceData.title) {
                 modal.innerHTML = '<div style="background:white;padding:2rem;color:red">Invalid service data - missing required fields</div>';
-                document.body.appendChild(modal);
+                // Store modal reference at higher scope
+                let currentModal = modal;
+                document.body.appendChild(currentModal);
                 
                 // Add close button handler
-                const closeButton = modal.querySelector('#modal-close-button');
+                const closeButton = currentModal.querySelector('#modal-close-button');
                 if (closeButton) {
                   closeButton.addEventListener('click', () => {
-                    modal.remove();
+                    console.log('Closing modal');
+                    currentModal.style.display = 'none';
+                    currentModal.remove();
+                    currentModal = null;
                   });
                 }
                 return;
@@ -510,6 +515,18 @@ export default (editor, opts = {}) => {
                   const data = await resp.json();
                   if (data.inside_zone) {
                     setAddressFeedback('Service available at this address!', 'success');
+                    
+                    // Hide address form after 1 second
+                    setTimeout(() => {
+                      const addressSection = modal.querySelector('#address-validation-section');
+                      if (addressSection) {
+                        addressSection.style.transition = 'opacity 0.3s ease';
+                        addressSection.style.opacity = '0';
+                        setTimeout(() => {
+                          addressSection.style.display = 'none';
+                        }, 300);
+                      }
+                    }, 1000);
                     
                     // Add payment form
                     const paymentForm = document.createElement('form');
