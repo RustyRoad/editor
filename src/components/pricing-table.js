@@ -13,12 +13,12 @@ export default (editor, opts = {}) => {
     model: {
       defaults: {
         tagName: 'div',
-        attributes: { 'data-gjs-type': 'pricing-card', class: 'pricing-table-card bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 p-6 flex flex-col' },
+        attributes: { 'data-gjs-type': 'pricing-card', class: 'pricing-table-card bg-white dark:bg-gray-900 hover:bg-gray-50 dark:bg-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 p-6 flex flex-col' },
         // Define the basic structure with IDs, content will be populated by updateComponents
         components: [
           {
             tagName: 'h3',
-            attributes: { id: 'card-title', class: 'text-xl font-bold text-gray-900 dark:text-white mb-4' },
+            attributes: { id: 'card-title', class: 'text-xl font-bold text-gray-900 dark:text-gray-100 dark:text-white mb-4' },
           },
           {
             tagName: 'div', // Container for description/features
@@ -120,14 +120,14 @@ export default (editor, opts = {}) => {
             // Add features list
             descFeatContainer.append({
               tagName: 'ul',
-              attributes: { class: 'text-gray-600 dark:text-gray-300 mb-4 flex-grow list-disc list-inside' },
+              attributes: { class: 'text-gray-600 dark:text-gray-300 dark:text-gray-300 mb-4 flex-grow list-disc list-inside' },
               components: features.map(feature => ({ tagName: 'li', content: feature }))
             });
           } else {
             // Add description paragraph
             descFeatContainer.append({
               tagName: 'p',
-              attributes: { class: 'text-gray-600 dark:text-gray-300 mb-4 flex-grow' },
+              attributes: { class: 'text-gray-600 dark:text-gray-300 dark:text-gray-300 mb-4 flex-grow' },
               content: description
             });
           }
@@ -141,7 +141,7 @@ export default (editor, opts = {}) => {
           priceButtonContainer.append([
             {
               tagName: 'p',
-              attributes: { class: 'text-2xl font-semibold text-gray-900 dark:text-white mb-4' },
+              attributes: { class: 'text-2xl font-semibold text-gray-900 dark:text-gray-100 dark:text-white mb-4' },
               content: price // Use the 'price' variable
             },
             {
@@ -339,21 +339,21 @@ export default (editor, opts = {}) => {
 
               modal.innerHTML = \`
                 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-                <div class="service-validation-container relative p-3 md:p-5 w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 relative" style="font-family: 'Poppins', sans-serif; max-width:95vw;">
-                  <button id="modal-close-button" style="right: 0;" class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-2xl text-gray-500 shadow focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Close">×</button>
+                <div class="service-validation-container relative p-3 md:p-5 w-full max-w-md mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 relative" style="font-family: 'Poppins', sans-serif; max-width:95vw;">
+                  <button id="modal-close-button" style="right: 0;" class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-2xl text-gray-500 shadow focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Close">×</button>
 
-                  <div class="mb-4 pb-3 border-b border-gray-100">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-2 tracking-tight">Order Summary</h2>
+                  <div class="mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2 tracking-tight">Order Summary</h2>
                     <div class="flex items-start gap-3">
-                      <img src="\${imageUrl}" alt="Service icon" class="h-12 w-12 flex-none rounded-md object-cover border border-gray-100 bg-gray-50" onerror="this.style.display='none'">
+                      <img src="\${imageUrl}" alt="Service icon" class="h-12 w-12 flex-none rounded-md object-cover border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900" onerror="this.style.display='none'">
                       <div class="flex-auto space-y-1">
-                        <h3 class="text-gray-900 font-medium text-base leading-tight">\${serviceData.title}</h3>
-                        <p class="text-sm text-gray-600">\${serviceData.description || 'Service details not available.'}</p>
+                        <h3 class="text-gray-900 dark:text-gray-100 font-medium text-base leading-tight">\${serviceData.title}</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">\${serviceData.description || 'Service details not available.'}</p>
                       </div>
-                      <p class="flex-none text-base font-semibold text-gray-900">\${formattedPrice}</p>
+                      <p class="flex-none text-base font-semibold text-gray-900 dark:text-gray-100">\${formattedPrice}</p>
                     </div>
-                    <dl class="mt-2 space-y-1 text-xs font-medium text-gray-600">
-                      <div class="flex items-center justify-between pt-1 text-gray-900">
+                    <dl class="mt-2 space-y-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                      <div class="flex items-center justify-between pt-1 text-gray-900 dark:text-gray-100">
                         <dt class="text-sm font-semibold">Total</dt>
                         <dd class="text-sm font-semibold">\${formattedPrice}</dd>
                       </div>
@@ -361,26 +361,26 @@ export default (editor, opts = {}) => {
                   </div>
 
                   <div id="address-validation-section">
-                    <h3 class="text-base font-medium text-gray-900 mb-2">1. Check Service Availability</h3>
+                    <h3 class="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">1. Check Service Availability</h3>
                     <div class="grid grid-cols-1 gap-2">
                       <div>
-                        <label for="address1" class="block text-xs font-medium text-gray-700">Street Address</label>
+                        <label for="address1" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Street Address</label>
                         <input type="text" id="address1" name="address1" required autocomplete="address-line1"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                       </div>
                       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
-                          <label for="city" class="block text-xs font-medium text-gray-700">City</label>
+                          <label for="city" class="block text-xs font-medium text-gray-700 dark:text-gray-300">City</label>
                           <input type="text" id="city" name="city" required autocomplete="address-level2"
                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                         </div>
                         <div>
-                          <label for="state" class="block text-xs font-medium text-gray-700">State</label>
+                          <label for="state" class="block text-xs font-medium text-gray-700 dark:text-gray-300">State</label>
                           <input type="text" id="state" name="state" required autocomplete="address-level1"
                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                         </div>
                         <div>
-                          <label for="zip5" class="block text-xs font-medium text-gray-700">ZIP Code</label>
+                          <label for="zip5" class="block text-xs font-medium text-gray-700 dark:text-gray-300">ZIP Code</label>
                           <input type="text" id="zip5" name="zip5" required autocomplete="postal-code"
                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                         </div>
@@ -391,7 +391,7 @@ export default (editor, opts = {}) => {
                             class="mt-6 px-5 py-3 rounded-md bg-blue-600 text-white text-base font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 w-full sm:w-auto">
                       Check Availability
                     </button>
-                    <div id="address-feedback" class="mt-3 text-sm font-medium"></div>
+                    <div id="address-feedback" class="mt-3 text-sm font-medium dark:text-gray-300"></div>
                   </div>
                 </div>
               \`;
@@ -412,7 +412,7 @@ export default (editor, opts = {}) => {
                   case 'success': addressFeedbackDiv.classList.add('text-green-600'); break;
                   case 'error': addressFeedbackDiv.classList.add('text-red-600'); break;
                   case 'loading': addressFeedbackDiv.classList.add('text-blue-600'); break;
-                  default: addressFeedbackDiv.classList.add('text-gray-600');
+                  default: addressFeedbackDiv.classList.add('text-gray-600 dark:text-gray-300');
                 }
               }
 
@@ -553,15 +553,15 @@ export default (editor, opts = {}) => {
                     paymentForm.id = 'payment-form';
                     paymentForm.className = 'mt-8 pt-6 border-t border-gray-200';
                     paymentForm.innerHTML =
-                      '<h3 class="text-base font-medium text-gray-900 mb-2">2. Billing Information</h3>' +
+                      '<h3 class="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">2. Billing Information</h3>' +
                       '<div class="mt-4">' +
-                        '<label for="email" class="block text-sm font-medium text-gray-700">Email address</label>' +
+                        '<label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email address</label>' +
                         '<input type="email" id="email" name="email" required ' +
                                'class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">' +
                       '</div>' +
-                      '<div class="mt-4 p-3 border border-gray-100 rounded-md bg-gray-50" id="payment-element-container">' +
+                      '<div class="mt-4 p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-gray-50 dark:bg-gray-900" id="payment-element-container">' +
                         '<div id="payment-element"></div>' +
-                        '<div id="payment-message" class="hidden mt-2 text-sm text-red-600"></div>' +
+                        '<div id="payment-message" class="hidden mt-2 text-sm text-red-600 dark:text-red-400"></div>' +
                       '</div>' +
                       '<button type="submit" id="submit-button" ' +
                               'class="mt-6 w-full rounded-md bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700">' +
