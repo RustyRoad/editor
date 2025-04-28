@@ -537,7 +537,7 @@ export default (service = {}) => {
               elements,
               clientSecret,
               confirmParams: {
-                  return_url: window.location.orign + '/thank-you' + '?payment_status=completed',
+                  return_url: window.location.origin + '/thank-you' + '?payment_status=completed',
                   receipt_email: userEmail,
                   payment_method_data: {
                       billing_details: billingDetails
