@@ -242,7 +242,7 @@ export default (service = {}) => {
                return serviceData.stripeKey;
            }
            try {
-               const response = await fetch('http://192.168.50.14/settings/stripe-api-key');
+               const response = await fetch('/settings/stripe-api-key');
                if (!response.ok) throw new Error('Failed to fetch Stripe key');
                const data = await response.json();
                return data?.stripe_api_key || null;
@@ -257,7 +257,7 @@ export default (service = {}) => {
                  return serviceData.stripeKey;
              }
              try {
-                 const response = await fetch('http://192.168.50.14/settings/stripe-api-key');
+                 const response = await fetch('/settings/stripe-api-key');
                  if (!response.ok) throw new Error('Failed to fetch Stripe key');
                  const data = await response.json();
                  return data?.stripe_api_key || null;
@@ -291,7 +291,7 @@ export default (service = {}) => {
            stripe = Stripe(stripePublishableKey);
 
            try {
-               const response = await fetch('http://192.168.50.14/api/stripe/checkout-sessions', {
+               const response = await fetch('/api/stripe/checkout-sessions', {
                    method: 'POST',
                    headers: { 'Content-Type': 'application/json' },
                    body: JSON.stringify({
@@ -428,7 +428,7 @@ export default (service = {}) => {
                return;
            }
            try {
-               const resp = await fetch('http://192.168.50.14/api/geocode', {
+               const resp = await fetch('/api/geocode', {
                    method: 'POST',
                    headers: {
                        'Content-Type': 'application/json',
@@ -605,7 +605,7 @@ export default (service = {}) => {
            setCouponFeedback('⏳ Applying coupon...', 'info');
            applyCouponBtn.disabled = true;
            try {
-               const response = await fetch('http://192.168.50.14/api/apply-coupon', {
+               const response = await fetch('/api/apply-coupon', {
                    method: 'POST',
                    headers: {
                        'Content-Type': 'application/json',

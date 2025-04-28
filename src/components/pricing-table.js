@@ -314,7 +314,7 @@ export default (editor, opts = {}) => {
       fetchServices() {
         if (this.get('services')?.length > 0) return; // Avoid redundant fetches
 
-        fetch('http://192.168.50.14/api/product/all') // Use the existing endpoint
+        fetch('/api/product/all') // Use the existing endpoint
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
