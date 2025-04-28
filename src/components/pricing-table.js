@@ -271,7 +271,18 @@ export default (editor, opts = {}) => {
               return;
             }
 
-            const validationFn = ${validationFnString};
+            // Preserve this function name - used in service validation
+            function serviceValidationFn(serviceData) {
+              try {
+                /*! preserve-function */
+                ${validationFnString.replace('function (', 'function validateService(')};
+                return validateService(serviceData);
+              } catch (e) {
+                console.error('Service validation error:', e);
+                return '<div class="text-red-600 p-4">Error validating service</div>';
+              }
+            }
+            const validationFn = serviceValidationFn;
 
             container.querySelectorAll('.gjs-pricing-buy-button').forEach(button => {
               button.addEventListener('click', (event) => {
