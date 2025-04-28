@@ -400,7 +400,10 @@ export default (editor, opts = {}) => {
                   }
 
                   // Get Stripe publishable key
-                  const response = await fetch('/api/stripe/config');
+                 const response = await fetch('/settings/stripe-api-key');
+                 if (!response.ok) throw new Error('Failed to fetch Stripe key');
+                
+                 
                   const { publishableKey } = await response.json();
                   
                   stripe = Stripe(publishableKey);
