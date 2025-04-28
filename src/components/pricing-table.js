@@ -274,7 +274,8 @@ export default (editor, opts = {}) => {
               modal.style.cssText = \`
                 position:fixed; top:0; left:0; width:100%; height:100%;
                 background:rgba(0,0,0,0.5); display:flex; justify-content:center;
-                align-items:center; z-index:1000;
+                align-items:flex-start; z-index:1000; overflow-y:auto;
+                padding:20px 0;
               \`;
 
               // Basic validation - check for required fields
@@ -676,10 +677,14 @@ export default (editor, opts = {}) => {
               // Add any other fields needed for display or validation
             }));
             this.set('services', services);
-            console.log('[Pricing Table Model] Services fetched:', services);
-            console.log('[Pricing Table Model] First service:', services[0]);
-            this.updateProductTraitOptions(); // Update the select trait options
-            this.renderContent(); // Re-render content after fetching services
+            // Restore selections that still exist
+            Object.entries(currentSelections).forEach(([key, value]) => {
+              if (value && services.some(s => s.id === value)) {
+                this.set(key, value);
+              }
+            });
+            this.updateProductTraitOptions();
+            this.renderContent();
           })
           .catch(error => {
             console.error('[Pricing Table Model] Error fetching services:', error);
