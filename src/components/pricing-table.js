@@ -355,7 +355,7 @@ export default (editor, opts = {}) => {
                     </div>
 
                     <button type="button" id="check-availability"
-                            class="mt-6 px-5 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                            class="mt-6 px-5 py-3 rounded-md bg-blue-600 text-white text-base font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 w-full sm:w-auto">
                       Check Availability
                     </button>
                     <div id="address-feedback" class="mt-3 text-sm font-medium"></div>
@@ -473,6 +473,12 @@ export default (editor, opts = {}) => {
                     modal.querySelector('.service-validation-container').appendChild(paymentForm);
                     
                     // Initialize Stripe
+                    // Hide step 1 and show step 2
+                    const addressSection = modal.querySelector('#address-validation-section');
+                    if (addressSection) {
+                      addressSection.classList.add('opacity-50', 'pointer-events-none');
+                    }
+
                     if (await initializeStripe()) {
                       paymentElement = elements.create('payment');
                       paymentElement.mount('#payment-element');
