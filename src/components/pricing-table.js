@@ -284,7 +284,19 @@ export default (editor, opts = {}) => {
                 return;
               }
 
-              // Format price and prepare modal content
+              // Simple price formatting function
+              // Helper function defined within the main export scope
+              const formatPrice = (amount, currency) => {
+                const numAmount = Number(amount);
+                if (isNaN(numAmount)) {
+                  // Return a default or error string if amount is not a valid number
+                  return 'N/A';
+                }
+                return new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: currency || 'USD', // Default to USD if not provided
+                }).format(numAmount);
+              };
               const formattedPrice = formatPrice(serviceData.price, serviceData.currency || 'usd');
               const buttonText = serviceData.price > 0 ? \`Pay \${formattedPrice} & Schedule\` : 'Complete Setup';
               const imageUrl = serviceData.imageUrl || 'https://spotlessbinco.com/assets/bin-icon.png';
