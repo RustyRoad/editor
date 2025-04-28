@@ -220,63 +220,53 @@ export default (editor, opts = {}) => {
          }
        }
 
+       // Include the script in the rendered content
+       const clientSideScript = `
+         (function() {
+           const container = document.querySelector('.pricing-table-container'); // Use the container class
+           if (!container) {
+             console.error('Pricing table container not found in client script.');
+             return;
+           }
+
+           container.querySelectorAll('.gjs-pricing-buy-button').forEach(button => {
+             button.addEventListener('click', (event) => {
+               try {
+                   const serviceData = JSON.parse(event.target.getAttribute('data-service'));
+
+                   // Check if the global initServiceValidation function exists
+                   if (typeof window.initServiceValidation === 'function') {
+                        // Call the global function with the service data
+                        window.initServiceValidation(serviceData);
+                        console.log('Called window.initServiceValidation with service data:', serviceData);
+                   } else {
+                       console.error('window.initServiceValidation function not found.');
+                       alert('Error: Service validation functionality is not available.');
+                   }
+               } catch (e) {
+                   console.error('Error parsing service data or calling initServiceValidation:', e);
+                   alert('Error processing service selection. Please try again.');
+               }
+             });
+           });
+         })(); // Self-executing
+       `;
+
+       pricingHtml += `<script>${clientSideScript}</script>`;
+
+
        // Set the component's content attribute
        this.set('content', pricingHtml);
       },
 
-      // Add script to handle button clicks and trigger service validation
-      script() {
-        const container = this.el; // The component's root element
-
-        // Ensure the serviceValidation component's init function is globally accessible
-        // This is a simplified approach; a better way might be needed depending on GrapesJS setup
-        if (typeof window.initServiceValidation !== 'function') {
-             console.error('Service Validation init function (window.initServiceValidation) not found.');
-             // Optionally display an error in the component itself
-             return; // Stop script execution if dependency is missing
-        }
-
-
-        container.querySelectorAll('.gjs-pricing-buy-button').forEach(button => {
-          button.addEventListener('click', (event) => {
-            try {
-                const serviceData = JSON.parse(event.target.getAttribute('data-service'));
-
-                // Find the serviceValidation component instance
-                const serviceValidationComponent = document.querySelector('.service-validation-container'); // Assuming the class
-
-                if (serviceValidationComponent) {
-                     // Pass the service data to the service validation initialization function
-                     window.initServiceValidation(serviceData);
-                     // Optionally, scroll to the service validation section
-                     serviceValidationComponent.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                    console.error('Service Validation component not found.');
-                    alert('Error: Could not start the signup process. Please ensure the Service Validation component is on the page.');
-                }
-            } catch (e) {
-                console.error('Error parsing service data or triggering validation:', e);
-                alert('Error processing service selection. Please try again.');
-            }
-          });
-        });
       },
-    },
-
-    view: {
-      onRender() {
-        // Manually execute the script after rendering the content
-        const script = this.model.get('script');
-        if (script) {
-          try {
-            // Execute the script in the context of the component's element
-            script.call(this.el);
-          } catch (e) {
-            console.error('Error executing pricing table script:', e);
-          }
+      view: {
+        onRender() {
+          // The script is now included in the model's 'content' attribute,
+          // which is rendered directly by the view.
+          // No need to manually execute the script here.
+          console.log('[Pricing Table View] Rendered content from model.');
         }
-      },
-    },
-
-  });
-};
+      }
+    });
+  };
