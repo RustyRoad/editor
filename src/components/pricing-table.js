@@ -284,16 +284,38 @@ export default (editor, opts = {}) => {
                 let currentModal = modal;
                 document.body.appendChild(currentModal);
                 
-                // Add close button handler
+                // Add robust close handler
+                function handleModalClose() {
+                  // Restore body scrolling
+                  document.body.style.overflow = '';
+                  try {
+                    console.log('Closing modal');
+                    if (currentModal) {
+                      currentModal.style.transition = 'opacity 0.3s ease';
+                      currentModal.style.opacity = '0';
+                      setTimeout(() => {
+                        if (currentModal && currentModal.parentNode) {
+                          currentModal.remove();
+                        }
+                        currentModal = null;
+                      }, 300);
+                    }
+                  } catch (err) {
+                    console.error('Error closing modal:', err);
+                  }
+                }
+  
                 const closeButton = currentModal.querySelector('#modal-close-button');
                 if (closeButton) {
-                  closeButton.addEventListener('click', () => {
-                    console.log('Closing modal');
-                    currentModal.style.display = 'none';
-                    currentModal.remove();
-                    currentModal = null;
-                  });
+                  closeButton.addEventListener('click', handleModalClose);
                 }
+                
+                // Close when clicking outside modal
+                currentModal.addEventListener('click', (e) => {
+                  if (e.target === currentModal) {
+                    handleModalClose();
+                  }
+                });
                 return;
               }
 
