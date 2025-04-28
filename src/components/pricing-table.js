@@ -10,22 +10,22 @@ export default (editor, opts = {}) => {
       defaults: {
         tagName: 'div',
         attributes: { 'data-gjs-type': 'pricing-card', class: 'pricing-table-card bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 p-6 flex flex-col' },
-        components: `
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Product Title</h3>
-          <p class="text-gray-600 dark:text-gray-300 mb-4 flex-grow">Product Description</p>
-          <ul class="text-gray-600 dark:text-gray-300 mb-4 flex-grow list-disc list-inside">
-            <li>Feature 1</li>
-            <li>Feature 2</li>
-            <li>Feature 3</li>
-          </ul>
-          <div class="mt-auto">
-            <p class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">$0.00</p>
-            <button class="pricing-table-button gjs-pricing-buy-button w-full rounded-md bg-blue-600 hover:bg-blue-700 active:bg-blue-800 px-4 py-2 text-white font-medium transition-colors duration-300">
-              Select Plan
-            </button>
-          </div>
-        `,
-        droppable: false,
+        // Define the basic structure, content will be populated by updateComponents
+        components: [
+          {
+            tagName: 'h3',
+            attributes: { class: 'text-xl font-bold text-gray-900 dark:text-white mb-4' },
+          },
+          {
+            tagName: 'div', // Container for description/features
+            attributes: { class: 'description-features-container flex-grow' },
+          },
+          {
+            tagName: 'div', // Container for price and button
+            attributes: { class: 'mt-auto' },
+          }
+        ],
+        droppable: false, // Inner components are droppable within the card
         stylable: true, // Allow all Tailwind classes
         traits: [
           // Traits for editing card content
@@ -78,6 +78,9 @@ export default (editor, opts = {}) => {
       init() {
         // Update components when traits change
         this.listenTo(this, 'change:cardTitle change:cardDescription change:cardFeatures change:cardPrice change:buttonText', this.updateComponents);
+        // Defer updateComponents call slightly to ensure initial data is set
+        // Use a small timeout or wait for a relevant event if available
+        setTimeout(() => this.updateComponents(), 0); // Defer to the next tick
       },
 
       updateComponents() {
@@ -87,66 +90,73 @@ export default (editor, opts = {}) => {
         const price = this.get('cardPrice');
         const buttonText = this.get('buttonText');
 
+        console.log('[Pricing Card] updateComponents called');
+        console.log('[Pricing Card] Data:', { title, description, features, price, buttonText });
+
         // Update the inner components based on trait values
-        this.components().forEach(component => {
-          const tagName = component.get('tagName');
-          if (tagName === 'h3') {
-            component.set('content', title);
-          } else if (tagName === 'p' && component.get('classes').has('flex-grow')) {
-            // Update description paragraph if no features
-            if (features.length === 0) {
-              component.set('content', description);
-            } else {
-              // Remove description paragraph if features exist
-              this.remove(component);
-            }
-          } else if (tagName === 'ul') {
-            // Update features list
-            component.empty(); // Clear existing features
-            features.forEach(feature => {
-              component.append(`<li>${feature}</li>`);
-            });
-            // If features are added and description was present, remove description
-            const descriptionComp = this.components().filter(comp => comp.get('tagName') === 'p' && comp.get('classes').has('flex-grow'))[0];
-            if (features.length > 0 && descriptionComp) {
-              this.remove(descriptionComp);
-            }
-          } else if (tagName === 'div' && component.get('classes').has('mt-auto')) {
-            // Update price and button text within the footer div
-            component.components().forEach(footerComp => {
-              const footerTagName = footerComp.get('tagName');
-              if (footerTagName === 'p') {
-                footerComp.set('content', price);
-              } else if (footerTagName === 'button') {
-                footerComp.set('content', buttonText);
-              }
-            });
-          }
-        });
+        // Find the main inner containers
+        const titleComp = this.components().filter(comp => comp.get('tagName') === 'h3')[0];
+        const descFeatContainer = this.components().filter(comp => comp.get('classes').has('description-features-container'))[0];
+        const priceButtonContainer = this.components().filter(comp => comp.get('classes').has('mt-auto'))[0];
 
-        // If features were removed and description was not present, add description back
-        const hasDescription = this.components().some(comp => comp.get('tagName') === 'p' && comp.get('classes').has('flex-grow'));
-        const hasFeaturesList = this.components().some(comp => comp.get('tagName') === 'ul');
+        console.log('[Pricing Card] Containers found:', { titleComp: !!titleComp, descFeatContainer: !!descFeatContainer, priceButtonContainer: !!priceButtonContainer });
 
-        if (features.length === 0 && !hasDescription) {
-          // Find the position to insert the description (after title)
-          const titleComp = this.components().filter(comp => comp.get('tagName') === 'h3')[0];
-          if (titleComp) {
-            this.add({
-              tagName: 'p',
-              attributes: { class: 'text-gray-600 dark:text-gray-300 mb-4 flex-grow' },
-              content: description
-            }, { at: this.indexOf(titleComp) + 1 });
-          }
-        } else if (features.length > 0 && !hasFeaturesList) {
-          // If features were added and no ul exists, add the ul
-          const titleComp = this.components().filter(comp => comp.get('tagName') === 'h3')[0];
-          if (titleComp) {
-            const ulComp = this.add({
+
+        if (titleComp) {
+          titleComp.set('content', title);
+        }
+
+        if (descFeatContainer) {
+          // Clear existing content in the description/features container
+          descFeatContainer.empty();
+
+          if (features.length > 0) {
+            // Add features list
+            descFeatContainer.append({
               tagName: 'ul',
               attributes: { class: 'text-gray-600 dark:text-gray-300 mb-4 flex-grow list-disc list-inside' },
               components: features.map(feature => ({ tagName: 'li', content: feature }))
-            }, { at: this.indexOf(titleComp) + 1 });
+            });
+          } else {
+            // Add description paragraph
+            descFeatContainer.append({
+              tagName: 'p',
+              attributes: { class: 'text-gray-600 dark:text-gray-300 mb-4 flex-grow' },
+              content: description
+            });
+          }
+        }
+
+        if (priceButtonContainer) {
+          // Clear existing content in the price/button container
+          priceButtonContainer.empty();
+
+          // Add price paragraph and button
+          priceButtonContainer.append([
+            {
+              tagName: 'p',
+              attributes: { class: 'text-2xl font-semibold text-gray-900 dark:text-white mb-4' },
+              content: price // Use the 'price' variable
+            },
+            {
+              tagName: 'button',
+              attributes: { class: 'pricing-table-button gjs-pricing-buy-button w-full rounded-md bg-blue-600 hover:bg-blue-700 active:bg-blue-800 px-4 py-2 text-white font-medium transition-colors duration-300' },
+              content: buttonText
+            }
+          ]);
+
+          // Update data-service attribute on the newly added button
+          const buttonComp = priceButtonContainer.components().filter(comp => comp.get('tagName') === 'button')[0];
+          if (buttonComp) {
+            const serviceId = this.get('serviceId');
+            const serviceData = { // Construct a basic service data object from model properties
+              id: serviceId,
+              title: this.get('cardTitle'),
+              description: this.get('cardDescription'),
+              price: parseFloat(this.get('cardPrice')?.replace(/[^0-9.-]+/g, "")) || 0, // Attempt to parse price
+              // Add other relevant properties if stored on the model
+            };
+            buttonComp.addAttributes({ 'data-service': JSON.stringify(serviceData) });
           }
         }
       },
@@ -304,7 +314,7 @@ export default (editor, opts = {}) => {
       fetchServices() {
         if (this.get('services')?.length > 0) return; // Avoid redundant fetches
 
-        fetch('/api/product/all') // Use the existing endpoint
+        fetch('http://192.168.50.14/api/product/all') // Use the existing endpoint
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -398,7 +408,7 @@ export default (editor, opts = {}) => {
             if (!gridContainer) {
               const gridCols = this.get('gridCols') || 'grid-cols-3';
               const gridGap = this.get('gridGap') || 'gap-6';
-              gridContainer = this.add({
+              gridContainer = this.components().add({
                 tagName: 'div',
                 attributes: { class: `pricing-table-grid grid ${gridCols} ${gridGap} p-4` },
                 droppable: '.pricing-table-card', // Only allow pricing-card components inside
@@ -406,10 +416,12 @@ export default (editor, opts = {}) => {
               }, { at: 0 }); // Add as the first component
             } else {
               // Update grid classes if container already exists
+              const gridCols = this.get('gridCols') || 'grid-cols-3';
+              const gridGap = this.get('gridGap') || 'gap-6';
               const currentClasses = gridContainer.get('attributes').class.split(' ');
               const newClasses = currentClasses.filter(cls => !cls.startsWith('grid-cols-') && !cls.startsWith('gap-'));
-              newClasses.push(this.get('gridCols') || 'grid-cols-3');
-              newClasses.push(this.get('gridGap') || 'gap-6');
+              newClasses.push(gridCols);
+              newClasses.push(gridGap);
               gridContainer.set('attributes', { ...gridContainer.get('attributes'), class: newClasses.join(' ') });
               gridContainer.empty(); // Clear existing cards to re-add based on selection
             }
@@ -452,15 +464,15 @@ export default (editor, opts = {}) => {
             // this.set('content', pricingHtml); // Remove this line
           }
         }
-      },
+      }
+    },
 
-      view: {
-        onRender() {
-          // The script is now included via the model's 'script' property
-          // and the component's inner structure is defined by nested components.
-          // No need to manually render content or execute script here.
-          console.log('[Pricing Table View] Rendered with nested components.');
-        }
+    view: {
+      onRender() {
+        // The script is now included via the model's 'script' property
+        // and the component's inner structure is defined by nested components.
+        // No need to manually render content or execute script here.
+        console.log('[Pricing Table View] Rendered with nested components.');
       }
     }
   });
