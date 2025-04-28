@@ -277,15 +277,17 @@ export default (editor, opts = {}) => {
                 align-items:center; z-index:1000;
               \`;
 
-              // Basic validation
-              if (!serviceData?.id || typeof serviceData.price === 'number') {
-                modal.innerHTML = '<div style="background:white;padding:2rem">Invalid service data</div>';
+              // Basic validation - check for required fields
+              if (!serviceData?.id || typeof serviceData.price !== 'number' || !serviceData.title) {
+                modal.innerHTML = '<div style="background:white;padding:2rem;color:red">Invalid service data - missing required fields</div>';
                 document.body.appendChild(modal);
                 return;
               }
 
-              // Build modal content
-              const price = (serviceData.price/100).toFixed(2);
+              // Format price (handle both dollars and cents formats)
+              const price = serviceData.price < 100 ?
+                serviceData.price.toFixed(2) :
+                (serviceData.price/100).toFixed(2);
               modal.innerHTML = \`
                 <div style="background:white;padding:2rem;border-radius:8px;max-width:600px;width:100%;position:relative">
                   <button onclick="this.closest('div[style^=\"position:fixed\"]').remove()"
