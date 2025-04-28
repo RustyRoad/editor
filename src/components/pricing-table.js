@@ -284,22 +284,128 @@ export default (editor, opts = {}) => {
                 return;
               }
 
-              // Format price (handle both dollars and cents formats)
-              const price = serviceData.price < 100 ?
-                serviceData.price.toFixed(2) :
-                (serviceData.price/100).toFixed(2);
+              // Format price and prepare modal content
+              const formattedPrice = formatPrice(serviceData.price, serviceData.currency || 'usd');
+              const buttonText = serviceData.price > 0 ? \`Pay \${formattedPrice} & Schedule\` : 'Complete Setup';
+              const imageUrl = serviceData.imageUrl || 'https://spotlessbinco.com/assets/bin-icon.png';
+
               modal.innerHTML = \`
-                <div style="background:white;padding:2rem;border-radius:8px;max-width:600px;width:100%;position:relative">
+                <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+                <div class="service-validation-container p-4 md:p-6 max-w-3xl mx-auto bg-white rounded-lg shadow-lg" style="font-family: 'Poppins', sans-serif;">
                   <button onclick="this.closest('div[style^=\"position:fixed\"]').remove()"
                     style="position:absolute;top:20px;right:20px;background:none;border:none;font-size:24px;cursor:pointer">
                     ×
                   </button>
-                  <h2 style="font-size:1.25rem;font-weight:bold;margin-bottom:1rem">\${serviceData.title}</h2>
-                  <p style="margin-bottom:1rem">\${serviceData.description || 'No description'}</p>
-                  <p style="font-size:1.5rem;font-weight:600;margin-bottom:1rem">$\${price}</p>
-                  <p>Please contact support to complete your purchase.</p>
+
+                  <div class="mb-6 pb-4 border-b border-gray-200">
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">Order Summary</h2>
+                    <div class="flex items-start space-x-4">
+                      <img src="\${imageUrl}" alt="Service icon" class="h-16 w-16 flex-none rounded-md object-cover border border-gray-200" onerror="this.style.display='none'">
+                      <div class="flex-auto space-y-1">
+                        <h3 class="text-gray-900 font-semibold">\${serviceData.title}</h3>
+                        <p class="text-sm text-gray-600">\${serviceData.description || 'Service details not available.'}</p>
+                      </div>
+                      <p class="flex-none text-lg font-medium text-gray-900">\${formattedPrice}</p>
+                    </div>
+                    <dl class="mt-4 space-y-1 text-sm font-medium text-gray-600">
+                      <div class="flex items-center justify-between pt-2 text-gray-900">
+                        <dt class="text-base font-semibold">Total</dt>
+                        <dd class="text-base font-semibold">\${formattedPrice}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div id="address-validation-section">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">1. Check Service Availability</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                      <div>
+                        <label for="address1" class="block text-sm font-medium text-gray-700">Street Address</label>
+                        <input type="text" id="address1" name="address1" required autocomplete="address-line1"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                      </div>
+                      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                          <input type="text" id="city" name="city" required autocomplete="address-level2"
+                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                          <label for="state" class="block text-sm font-medium text-gray-700">State</label>
+                          <input type="text" id="state" name="state" required autocomplete="address-level1"
+                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                          <label for="zip5" class="block text-sm font-medium text-gray-700">ZIP Code</label>
+                          <input type="text" id="zip5" name="zip5" required autocomplete="postal-code"
+                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                      </div>
+                    </div>
+
+                    <button type="button" id="check-availability"
+                            class="mt-6 px-5 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                      Check Availability
+                    </button>
+                    <div id="address-feedback" class="mt-3 text-sm font-medium"></div>
+                  </div>
                 </div>
               \`;
+
+              // Add JavaScript logic from service-validation.js
+              const address1Input = modal.querySelector('#address1');
+              const cityInput = modal.querySelector('#city');
+              const stateInput = modal.querySelector('#state');
+              const zip5Input = modal.querySelector('#zip5');
+              const checkBtn = modal.querySelector('#check-availability');
+              const addressFeedbackDiv = modal.querySelector('#address-feedback');
+
+              function setAddressFeedback(msg, type = 'info') {
+                if (!addressFeedbackDiv) return;
+                addressFeedbackDiv.textContent = msg;
+                addressFeedbackDiv.className = 'mt-3 text-sm font-medium';
+                switch (type) {
+                  case 'success': addressFeedbackDiv.classList.add('text-green-600'); break;
+                  case 'error': addressFeedbackDiv.classList.add('text-red-600'); break;
+                  case 'loading': addressFeedbackDiv.classList.add('text-blue-600'); break;
+                  default: addressFeedbackDiv.classList.add('text-gray-600');
+                }
+              }
+
+              async function handleCheckAvailability() {
+                const address = {
+                  address1: address1Input.value.trim(),
+                  city: cityInput.value.trim(),
+                  state: stateInput.value.trim(),
+                  zip5: zip5Input.value.trim()
+                };
+
+                setAddressFeedback('Checking availability...', 'loading');
+                checkBtn.disabled = true;
+
+                try {
+                  const resp = await fetch('/api/geocode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address })
+                  });
+
+                  if (!resp.ok) throw new Error('Address validation failed');
+                  
+                  const data = await resp.json();
+                  if (data.inside_zone) {
+                    setAddressFeedback('Service available at this address!', 'success');
+                  } else {
+                    setAddressFeedback('Service not available at this address', 'error');
+                  }
+                } catch (err) {
+                  setAddressFeedback('Error checking availability', 'error');
+                  console.error('Availability check error:', err);
+                } finally {
+                  checkBtn.disabled = false;
+                }
+              }
+
+              checkBtn.addEventListener('click', handleCheckAvailability);
 
               document.body.appendChild(modal);
             }
