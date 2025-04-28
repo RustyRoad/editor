@@ -450,7 +450,7 @@ export default (editor, opts = {}) => {
                       script.src = 'https://js.stripe.com/v3/';
                       script.onload = resolve;
                       document.head.appendChild(script);
-                    });
+                    })
                   }
 
                   // Get Stripe publishable key
@@ -676,15 +676,26 @@ export default (editor, opts = {}) => {
               priceId: service.priceId || null, // Assuming priceId is returned by the backend
               // Add any other fields needed for display or validation
             }));
-            this.set('services', services);
-            // Restore selections that still exist
-            Object.entries(currentSelections).forEach(([key, value]) => {
-              if (value && services.some(s => s.id === value)) {
-                this.set(key, value);
-              }
-            });
-            this.updateProductTraitOptions();
-            this.renderContent();
+            // First declare currentSelections
+            const currentSelections = {
+              product1: this.get('product1') || '',
+              product2: this.get('product2') || '',
+              product3: this.get('product3') || ''
+            };
+
+            if (services && Array.isArray(services)) {
+              this.set('services', services);
+              // Restore valid selections
+              Object.entries(currentSelections).forEach(([key, value]) => {
+                if (value && services.some(s => s.id === value)) {
+                  this.set(key, value);
+                }
+              });
+              this.updateProductTraitOptions();
+              this.renderContent();
+            } else {
+              throw new Error('Invalid services data');
+            }
           })
           .catch(error => {
             console.error('[Pricing Table Model] Error fetching services:', error);
@@ -724,6 +735,7 @@ export default (editor, opts = {}) => {
           product2: this.get('product2'),
           product3: this.get('product3')
         });
+        
       },
 
       // Method to render content based on state using nested components
