@@ -310,8 +310,8 @@ export default (service = {}) => {
               }
               
               const { status, client_secret } = await response.json();
-              if (status || !client_secret?.startsWith('pi_')) {
-                  throw new Error('Invalid PaymentIntent response from server');
+              if (status !== 'success' || !client_secret) {
+                  throw new Error('Invalid payment response from server');
               }
 
               clientSecret = client_secret;
