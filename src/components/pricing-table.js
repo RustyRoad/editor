@@ -339,8 +339,8 @@ export default (editor, opts = {}) => {
 
               modal.innerHTML = \`
                 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-                <div class="service-validation-container p-3 md:p-5 w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 relative" style="font-family: 'Poppins', sans-serif; max-width:95vw;">
-                  <button id="modal-close-button" class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-2xl text-gray-500 shadow focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Close">×</button>
+                <div class="service-validation-container relative p-3 md:p-5 w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 relative" style="font-family: 'Poppins', sans-serif; max-width:95vw;">
+                  <button id="modal-close-button" style="right: 0;" class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-2xl text-gray-500 shadow focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Close">×</button>
 
                   <div class="mb-4 pb-3 border-b border-gray-100">
                     <h2 class="text-lg font-semibold text-gray-800 mb-2 tracking-tight">Order Summary</h2>
