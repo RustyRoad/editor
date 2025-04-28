@@ -522,7 +522,18 @@ export default (service = {}) => {
             }
           };
 
-          const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+          // Submit the form and collect payment details
+          const {error: submitError} = await elements.submit();
+
+          if (submitError) {
+              // Show error to your customer (e.g., invalid information)
+              setErrorMessage(submitError.message);
+              setLoading(false);
+              return;
+          }
+
+          // Confirm the payment
+          const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
               elements,
               clientSecret,
               confirmParams: {
