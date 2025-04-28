@@ -383,6 +383,46 @@ export default (editor, opts = {}) => {
                 }
               }
 
+              let stripe;
+              let elements;
+              let paymentElement;
+
+              async function initializeStripe() {
+                try {
+                  // Load Stripe.js if not already loaded
+                  if (typeof Stripe === 'undefined') {
+                    await new Promise((resolve) => {
+                      const script = document.createElement('script');
+                      script.src = 'https://js.stripe.com/v3/';
+                      script.onload = resolve;
+                      document.head.appendChild(script);
+                    });
+                  }
+
+                  // Get Stripe publishable key
+                  const response = await fetch('/api/stripe/config');
+                  const { publishableKey } = await response.json();
+                  
+                  stripe = Stripe(publishableKey);
+                  elements = stripe.elements({
+                    appearance: {
+                      theme: 'stripe',
+                      variables: {
+                        colorPrimary: '#2563eb',
+                        colorBackground: '#ffffff',
+                        colorText: '#30313d',
+                        fontFamily: 'Poppins, system-ui, sans-serif'
+                      }
+                    }
+                  });
+
+                  return true;
+                } catch (err) {
+                  console.error('Stripe initialization failed:', err);
+                  return false;
+                }
+              }
+
               async function handleCheckAvailability() {
                 const address = {
                   address1: address1Input.value.trim(),
@@ -406,6 +446,56 @@ export default (editor, opts = {}) => {
                   const data = await resp.json();
                   if (data.inside_zone) {
                     setAddressFeedback('Service available at this address!', 'success');
+                    
+                    // Add payment form
+                    const paymentForm = document.createElement('form');
+                    paymentForm.id = 'payment-form';
+                    paymentForm.className = 'mt-8 pt-6 border-t border-gray-200';
+                    paymentForm.innerHTML =
+                      '<h3 class="text-lg font-medium text-gray-900">2. Billing Information</h3>' +
+                      '<div class="mt-4">' +
+                        '<label for="email" class="block text-sm font-medium text-gray-700">Email address</label>' +
+                        '<input type="email" id="email" name="email" required ' +
+                               'class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">' +
+                      '</div>' +
+                      '<div class="mt-6 p-4 border border-gray-200 rounded-md bg-gray-50" id="payment-element-container">' +
+                        '<div id="payment-element"></div>' +
+                        '<div id="payment-message" class="hidden mt-2 text-sm text-red-600"></div>' +
+                      '</div>' +
+                      '<button type="submit" id="submit-button" ' +
+                              'class="mt-6 w-full rounded-md bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700">' +
+                        buttonText +
+                      '</button>';
+                    
+                    modal.querySelector('.service-validation-container').appendChild(paymentForm);
+                    
+                    // Initialize Stripe
+                    if (await initializeStripe()) {
+                      paymentElement = elements.create('payment');
+                      paymentElement.mount('#payment-element');
+                      
+                      // Handle form submission
+                      paymentForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const submitBtn = paymentForm.querySelector('#submit-button');
+                        submitBtn.disabled = true;
+                        
+                        const { error } = await stripe.confirmPayment({
+                          elements,
+                          confirmParams: {
+                            return_url: window.location.origin + '/thank-you',
+                            receipt_email: paymentForm.querySelector('#email').value
+                          }
+                        });
+                        
+                        if (error) {
+                          paymentForm.querySelector('#payment-message').textContent = error.message;
+                          paymentForm.querySelector('#payment-message').classList.remove('hidden');
+                          submitBtn.disabled = false;
+                        }
+                      });
+                    }
+                    
                   } else {
                     setAddressFeedback('Service not available at this address', 'error');
                   }
