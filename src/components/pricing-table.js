@@ -281,6 +281,14 @@ export default (editor, opts = {}) => {
               if (!serviceData?.id || typeof serviceData.price !== 'number' || !serviceData.title) {
                 modal.innerHTML = '<div style="background:white;padding:2rem;color:red">Invalid service data - missing required fields</div>';
                 document.body.appendChild(modal);
+                
+                // Add close button handler
+                const closeButton = modal.querySelector('#modal-close-button');
+                if (closeButton) {
+                  closeButton.addEventListener('click', () => {
+                    modal.remove();
+                  });
+                }
                 return;
               }
 
@@ -464,6 +472,12 @@ export default (editor, opts = {}) => {
                       }
                     }
                   });
+
+                  // Hide address validation and show payment form
+                  const addressSection = modal.querySelector('#address-validation-section');
+                  if (addressSection) {
+                    addressSection.classList.add('opacity-50', 'pointer-events-none');
+                  }
 
                   return true;
                 } catch (err) {
