@@ -387,6 +387,24 @@ export default (editor, opts = {}) => {
               let elements;
               let paymentElement;
 
+              
+              const fetchStripeKey = async () => {
+                    if (serviceData && serviceData.stripeKey) {
+                        return serviceData.stripeKey;
+                    }
+                    try {
+                        const response = await fetch('/settings/stripe-api-key');
+                        if (!response.ok) throw new Error('Failed to fetch Stripe key');
+                        const data = await response.json();
+                        return data?.stripe_api_key || null;
+                    }
+                    catch (err) {
+                        console.error('Error fetching Stripe key:', err);
+                        return null;
+                    }
+                };
+
+
               async function initializeStripe() {
                 try {
                   // Load Stripe.js if not already loaded
@@ -400,11 +418,7 @@ export default (editor, opts = {}) => {
                   }
 
                   // Get Stripe publishable key
-                 const response = await fetch('/settings/stripe-api-key');
-                 if (!response.ok) throw new Error('Failed to fetch Stripe key');
-                
-                 
-                  const { publishableKey } = await response.json();
+                  const publishableKey = await fetchStripeKey();
                   
                   stripe = Stripe(publishableKey);
                   elements = stripe.elements({
@@ -422,6 +436,7 @@ export default (editor, opts = {}) => {
                   return true;
                 } catch (err) {
                   console.error('Stripe initialization failed:', err);
+                  setAddressFeedback('Payment processing unavailable', 'error');
                   return false;
                 }
               }
