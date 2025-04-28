@@ -629,6 +629,14 @@ export default (editor, opts = {}) => {
               // Ensure modal is properly added to DOM
               try {
                 document.body.appendChild(modal);
+                // Attach close button handler for all modals
+                const closeButton = modal.querySelector('#modal-close-button');
+                if (closeButton) {
+                  closeButton.addEventListener('click', () => {
+                    document.body.style.overflow = '';
+                    modal.remove();
+                  });
+                }
                 console.log('Modal loaded successfully');
               } catch (err) {
                 console.error('Failed to load modal:', err);
