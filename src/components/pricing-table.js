@@ -508,7 +508,12 @@ export default (editor, opts = {}) => {
                           elements,
                           confirmParams: {
                             return_url: window.location.origin + '/thank-you',
-                            receipt_email: paymentForm.querySelector('#email').value
+                            receipt_email: paymentForm.querySelector('#email').value,
+                            payment_method_data: {
+                              billing_details: {
+                                email: paymentForm.querySelector('#email').value
+                              }
+                            }
                           }
                         });
                         
@@ -520,6 +525,8 @@ export default (editor, opts = {}) => {
                       });
                     }
                     
+                  } else if (data.error) {
+                    setAddressFeedback(data.error.message || 'Error validating address', 'error');
                   } else {
                     setAddressFeedback('Service not available at this address', 'error');
                   }
