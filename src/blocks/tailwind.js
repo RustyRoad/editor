@@ -1,5 +1,6 @@
 import { source as a1 } from './data/cta-1'
 import embeddedCheckout from '../components/embedded-checkout'
+import pricingTable from '../components/pricing-table' // Import the pricing table component
 import { source as a1s } from './data/icons/cta-1'
 import { source as a2 } from './data/cta-2'
 import { source as a2s } from './data/icons/cta-2'
@@ -687,6 +688,15 @@ const sources = [
     label: m3s,
     category: 'Commerce',
     content: {type: 'Service Validation'},
+  },
+  {
+    id: 'pricing-table', // Unique ID for the block
+    class: '', // Add a class if needed for styling the block icon
+    label: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+              <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+            </svg>`, // Placeholder icon (replace with a proper pricing table icon if available)
+    category: 'Commerce', // Category in the blocks panel
+    content: {type: 'pricing-table'}, // Reference the component type
   }
 ]
 

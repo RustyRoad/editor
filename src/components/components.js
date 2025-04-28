@@ -4,6 +4,7 @@ import serviceSignup from "./service-signup";
 // Import the updated service validation component function
 import serviceValidation from "./service-validation"; // Ensure this file contains the updated code with integrated billing
 import { loadStripe } from '@stripe/stripe-js';
+import pricingTable from "./pricing-table"; // Import the new pricing table component
 
 // Helper function defined within the main export scope
 const formatPrice = (amount, currency) => {
@@ -800,7 +801,14 @@ const components = (editor, opts = {}) => {
     }
   }); // End addType 'Service Validation'
 
+  // Register pricing-table component
+  // Call the pricingTable component registration function
+  pricingTable(editor);
 }; // End of main components registration function
+
+// Expose serviceValidation globally for use by other components (like pricing table)
+window.initServiceValidation = serviceValidation;
+
 
 export { formatPrice }; // Export helper if needed elsewhere
 export default components; // Export the main registration function
