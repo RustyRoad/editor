@@ -339,51 +339,51 @@ export default (editor, opts = {}) => {
 
               modal.innerHTML = \`
                 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-                <div class="service-validation-container p-4 md:p-6 max-w-3xl mx-auto bg-white rounded-lg shadow-lg" style="font-family: 'Poppins', sans-serif;">
+                <div class="service-validation-container p-3 md:p-5 w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 relative" style="font-family: 'Poppins', sans-serif; max-width:95vw;">
                   <button onclick="this.closest('div[style^=\"position:fixed\"]').remove()"
                     style="position:absolute;top:20px;right:20px;background:none;border:none;font-size:24px;cursor:pointer">
                     ×
                   </button>
 
-                  <div class="mb-6 pb-4 border-b border-gray-200">
-                    <h2 class="text-xl font-bold text-gray-800 mb-3">Order Summary</h2>
-                    <div class="flex items-start space-x-4">
-                      <img src="\${imageUrl}" alt="Service icon" class="h-16 w-16 flex-none rounded-md object-cover border border-gray-200" onerror="this.style.display='none'">
+                  <div class="mb-4 pb-3 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-2 tracking-tight">Order Summary</h2>
+                    <div class="flex items-start gap-3">
+                      <img src="\${imageUrl}" alt="Service icon" class="h-12 w-12 flex-none rounded-md object-cover border border-gray-100 bg-gray-50" onerror="this.style.display='none'">
                       <div class="flex-auto space-y-1">
-                        <h3 class="text-gray-900 font-semibold">\${serviceData.title}</h3>
+                        <h3 class="text-gray-900 font-medium text-base leading-tight">\${serviceData.title}</h3>
                         <p class="text-sm text-gray-600">\${serviceData.description || 'Service details not available.'}</p>
                       </div>
-                      <p class="flex-none text-lg font-medium text-gray-900">\${formattedPrice}</p>
+                      <p class="flex-none text-base font-semibold text-gray-900">\${formattedPrice}</p>
                     </div>
-                    <dl class="mt-4 space-y-1 text-sm font-medium text-gray-600">
-                      <div class="flex items-center justify-between pt-2 text-gray-900">
-                        <dt class="text-base font-semibold">Total</dt>
-                        <dd class="text-base font-semibold">\${formattedPrice}</dd>
+                    <dl class="mt-2 space-y-1 text-xs font-medium text-gray-600">
+                      <div class="flex items-center justify-between pt-1 text-gray-900">
+                        <dt class="text-sm font-semibold">Total</dt>
+                        <dd class="text-sm font-semibold">\${formattedPrice}</dd>
                       </div>
                     </dl>
                   </div>
 
                   <div id="address-validation-section">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">1. Check Service Availability</h3>
-                    <div class="grid grid-cols-1 gap-4">
+                    <h3 class="text-base font-medium text-gray-900 mb-2">1. Check Service Availability</h3>
+                    <div class="grid grid-cols-1 gap-2">
                       <div>
-                        <label for="address1" class="block text-sm font-medium text-gray-700">Street Address</label>
+                        <label for="address1" class="block text-xs font-medium text-gray-700">Street Address</label>
                         <input type="text" id="address1" name="address1" required autocomplete="address-line1"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                       </div>
-                      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
-                          <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                          <label for="city" class="block text-xs font-medium text-gray-700">City</label>
                           <input type="text" id="city" name="city" required autocomplete="address-level2"
                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                         </div>
                         <div>
-                          <label for="state" class="block text-sm font-medium text-gray-700">State</label>
+                          <label for="state" class="block text-xs font-medium text-gray-700">State</label>
                           <input type="text" id="state" name="state" required autocomplete="address-level1"
                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                         </div>
                         <div>
-                          <label for="zip5" class="block text-sm font-medium text-gray-700">ZIP Code</label>
+                          <label for="zip5" class="block text-xs font-medium text-gray-700">ZIP Code</label>
                           <input type="text" id="zip5" name="zip5" required autocomplete="postal-code"
                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                         </div>
@@ -556,13 +556,13 @@ export default (editor, opts = {}) => {
                     paymentForm.id = 'payment-form';
                     paymentForm.className = 'mt-8 pt-6 border-t border-gray-200';
                     paymentForm.innerHTML =
-                      '<h3 class="text-lg font-medium text-gray-900">2. Billing Information</h3>' +
+                      '<h3 class="text-base font-medium text-gray-900 mb-2">2. Billing Information</h3>' +
                       '<div class="mt-4">' +
                         '<label for="email" class="block text-sm font-medium text-gray-700">Email address</label>' +
                         '<input type="email" id="email" name="email" required ' +
                                'class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">' +
                       '</div>' +
-                      '<div class="mt-6 p-4 border border-gray-200 rounded-md bg-gray-50" id="payment-element-container">' +
+                      '<div class="mt-4 p-3 border border-gray-100 rounded-md bg-gray-50" id="payment-element-container">' +
                         '<div id="payment-element"></div>' +
                         '<div id="payment-message" class="hidden mt-2 text-sm text-red-600"></div>' +
                       '</div>' +
