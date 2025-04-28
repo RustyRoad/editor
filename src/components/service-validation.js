@@ -361,7 +361,6 @@ export default (service = {}) => {
                   clientSecret
               });
               paymentElement = elements.create('payment');
-              paymentElement = elements.create('payment');
 
               if (paymentElementDiv) {
                   paymentElement.mount(paymentElementDiv);
