@@ -1,4 +1,8 @@
 import { formatPrice } from './components'; // Assuming formatPrice is available
+import initServiceValidation from './service-validation';
+
+// Stringify the validation function for injection into the script
+const validationFnString = initServiceValidation.toString();
 
 export default (editor, opts = {}) => {
   const domc = editor.DomComponents;
@@ -95,18 +99,20 @@ export default (editor, opts = {}) => {
 
         // Update the inner components based on trait values
         // Find the main inner containers by ID
-        const titleComp = this.components().filter(comp => comp.get('attributes').id === 'card-title')[0];
-        const descFeatContainer = this.components().filter(comp => comp.get('attributes').id === 'card-description-features')[0];
-        const priceButtonContainer = this.components().filter(comp => comp.get('attributes').id === 'card-price-button')[0];
+        // Get components by their defined position in the defaults array (more reliable than filtering)
+        const titleComp = this.components().at(0);
+        const descFeatContainer = this.components().at(1);
+        const priceButtonContainer = this.components().at(2);
 
         console.log('[Pricing Card] Containers found:', { titleComp: !!titleComp, descFeatContainer: !!descFeatContainer, priceButtonContainer: !!priceButtonContainer });
 
 
-        if (titleComp) {
+        // Ensure components exist and have required properties
+        if (titleComp && titleComp.get) {
           titleComp.set('content', title);
         }
 
-        if (descFeatContainer) {
+        if (descFeatContainer && descFeatContainer.get && descFeatContainer.empty && descFeatContainer.append) {
           // Clear existing content in the description/features container
           descFeatContainer.empty();
 
@@ -127,7 +133,7 @@ export default (editor, opts = {}) => {
           }
         }
 
-        if (priceButtonContainer) {
+        if (priceButtonContainer && priceButtonContainer.get && priceButtonContainer.empty && priceButtonContainer.append) {
           // Clear existing content in the price/button container
           priceButtonContainer.empty();
 
@@ -259,49 +265,27 @@ export default (editor, opts = {}) => {
         // This script will be included by GrapesJS in the exported HTML.
         script: `
           (function() {
-            const container = document.querySelector('.pricing-table-container'); // Use the container class
+            const container = document.querySelector('.pricing-table-container');
             if (!container) {
               console.error('Pricing table container not found in client script.');
               return;
             }
 
-            // Function to initialize button listeners
-            function initializeButtonListeners() {
-              container.querySelectorAll('.gjs-pricing-buy-button').forEach(button => {
-                button.addEventListener('click', (event) => {
-                  try {
-                      const serviceData = JSON.parse(event.target.getAttribute('data-service'));
+            const validationFn = ${validationFnString};
 
-                      // Check if the global initServiceValidation function exists
-                      if (typeof window.initServiceValidation === 'function') {
-                           // Call the global function with the service data
-                           window.initServiceValidation(serviceData);
-                           console.log('Called window.initServiceValidation with service data:', serviceData);
-                      } else {
-                          console.error('window.initServiceValidation function not found.');
-                          alert('Error: Service validation functionality is not available.');
-                      }
-                  } catch (e) {
-                      console.error('Error parsing service data or calling initServiceValidation:', e);
-                      alert('Error processing service selection. Please try again.');
-                  }
-                });
-              });
-            }
-
-            // Wait for window.initServiceValidation to be defined
-            function waitForServiceValidationInit(callback) {
-                if (typeof window.initServiceValidation === 'function') {
-                    callback();
-                } else {
-                    setTimeout(() => waitForServiceValidationInit(callback), 50); // Check again after a short delay
+            container.querySelectorAll('.gjs-pricing-buy-button').forEach(button => {
+              button.addEventListener('click', (event) => {
+                try {
+                  const serviceData = JSON.parse(event.target.getAttribute('data-service'));
+                  validationFn(serviceData);
+                  console.log('Called service validation with service data:', serviceData);
+                } catch (e) {
+                  console.error('Error processing service selection:', e);
+                  alert('Error processing service selection. Please try again.');
                 }
-            }
-
-            // Wait for the function and then initialize listeners
-            waitForServiceValidationInit(initializeButtonListeners);
-
-          })(); // Self-executing
+              });
+            });
+          })();
         `,
       },
 
@@ -330,7 +314,8 @@ export default (editor, opts = {}) => {
               // Add any other fields needed for display or validation
             }));
             this.set('services', services);
-            console.log('[Pricing Table Model] Services fetched:', services.length);
+            console.log('[Pricing Table Model] Services fetched:', services);
+            console.log('[Pricing Table Model] First service:', services[0]);
             this.updateProductTraitOptions(); // Update the select trait options
             this.renderContent(); // Re-render content after fetching services
           })
@@ -367,6 +352,11 @@ export default (editor, opts = {}) => {
           }
         });
         console.log('[Pricing Table Model] Product traits updated.');
+        console.log('[Pricing Table Model] Current product selections:', {
+            product1: this.get('product1'),
+            product2: this.get('product2'),
+            product3: this.get('product3')
+        });
       },
 
       // Method to render content based on state using nested components
@@ -435,6 +425,7 @@ export default (editor, opts = {}) => {
              };
 
              // Add pricing-card components for each selected service
+             console.log('[Pricing Table Model] Displaying services:', displayedServices);
              displayedServices.forEach((service, index) => {
                const productId = ['product1', 'product2', 'product3'][index];
                const features = productFeatures[productId];
@@ -464,6 +455,7 @@ export default (editor, opts = {}) => {
              // this.set('content', pricingHtml); // Remove this line
          }
        }
+        }
       },
 
       view: {
@@ -474,7 +466,5 @@ export default (editor, opts = {}) => {
           console.log('[Pricing Table View] Rendered with nested components.');
         }
       }
-    }
-  }
-  );
-};
+    });
+  };
