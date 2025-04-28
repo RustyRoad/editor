@@ -155,527 +155,529 @@ export default (service = {}) => {
   <script src="https://js.stripe.com/v3/"></script>
 
   <script>
-    // Wrap in a function to avoid global scope pollution
-    (function () {
-      // --- Configuration & State ---
-      const serviceDataJson = ${JSON.stringify(service || {})};
-      const serviceData = serviceDataJson;
-      let stripe = null;
-      let elements = null;
-      let paymentElement = null;
-      let clientSecret = null;
-      let validatedAddress = null;
-      let stripePublishableKey = null;
+   <script>
+     // Expose initialization function globally for use by other components (e.g., pricing table)
+     window.initServiceValidation = function (serviceData) {
+       // --- Configuration & State ---
+       // Use the passed serviceData instead of embedding it directly
+       let stripe = null;
+       let elements = null;
+       let paymentElement = null;
+       let clientSecret = null;
+       let validatedAddress = null;
+       let stripePublishableKey = null;
 
-      // --- DOM Element References ---
-      const container = document.querySelector('.service-validation-container');
-      if (!container) {
-          console.error('Service validation container not found');
-          return;
-      }
-      const addressSection = container.querySelector('#address-validation-section');
-      const address1Input = container.querySelector('#address1');
-      const cityInput = container.querySelector('#city');
-      const stateInput = container.querySelector('#state');
-      const zip5Input = container.querySelector('#zip5');
-      const checkBtn = container.querySelector('#check-availability');
-      const addressFeedbackDiv = container.querySelector('#address-feedback');
-      const paymentForm = container.querySelector('#payment-form');
-      const emailInput = container.querySelector('#email');
-      const paymentElementContainer = container.querySelector('#payment-element-container');
-      const paymentElementDiv = container.querySelector('#payment-element');
-      const paymentMessageDiv = container.querySelector('#payment-message');
-      const couponInput = container.querySelector('#coupon');
-      const applyCouponBtn = container.querySelector('#apply-coupon-button');
-      const couponFeedbackDiv = container.querySelector('#coupon-feedback');
-      const submitBtn = container.querySelector('#submit-button');
-      const submitBtnText = container.querySelector('#button-text');
-      const submitSpinner = container.querySelector('#spinner');
-      const errorMessageDiv = container.querySelector('#error-message');
+       // --- DOM Element References ---
+       const container = document.querySelector('.service-validation-container');
+       if (!container) {
+           console.error('Service validation container not found');
+           return;
+       }
+       const addressSection = container.querySelector('#address-validation-section');
+       const address1Input = container.querySelector('#address1');
+       const cityInput = container.querySelector('#city');
+       const stateInput = container.querySelector('#state');
+       const zip5Input = container.querySelector('#zip5');
+       const checkBtn = container.querySelector('#check-availability');
+       const addressFeedbackDiv = container.querySelector('#address-feedback');
+       const paymentForm = container.querySelector('#payment-form');
+       const emailInput = container.querySelector('#email');
+       const paymentElementContainer = container.querySelector('#payment-element-container');
+       const paymentElementDiv = container.querySelector('#payment-element');
+       const paymentMessageDiv = container.querySelector('#payment-message');
+       const couponInput = container.querySelector('#coupon');
+       const applyCouponBtn = container.querySelector('#apply-coupon-button');
+       const couponFeedbackDiv = container.querySelector('#coupon-feedback');
+       const submitBtn = container.querySelector('#submit-button');
+       const submitBtnText = container.querySelector('#button-text');
+       const submitSpinner = container.querySelector('#spinner');
+       const errorMessageDiv = container.querySelector('#error-message');
 
-      // --- Helper Functions ---
-      function setAddressFeedback(msg, type = 'info') {
-          if (!addressFeedbackDiv) return;
-          addressFeedbackDiv.textContent = msg;
-          addressFeedbackDiv.className = 'mt-3 text-sm font-medium';
-          switch (type) {
-              case 'success': addressFeedbackDiv.classList.add('text-green-600'); break;
-              case 'error': addressFeedbackDiv.classList.add('text-red-600'); break;
-              case 'loading': addressFeedbackDiv.classList.add('text-blue-600'); break;
-              default: addressFeedbackDiv.classList.add('text-gray-600');
-          }
-      }
+       // --- Helper Functions ---
+       function setAddressFeedback(msg, type = 'info') {
+           if (!addressFeedbackDiv) return;
+           addressFeedbackDiv.textContent = msg;
+           addressFeedbackDiv.className = 'mt-3 text-sm font-medium';
+           switch (type) {
+               case 'success': addressFeedbackDiv.classList.add('text-green-600'); break;
+               case 'error': addressFeedbackDiv.classList.add('text-red-600'); break;
+               case 'loading': addressFeedbackDiv.classList.add('text-blue-600'); break;
+               default: addressFeedbackDiv.classList.add('text-gray-600');
+           }
+       }
 
-      function setPaymentMessage(message) {
-          if (!paymentMessageDiv) return;
-          paymentMessageDiv.textContent = message;
-          paymentMessageDiv.classList.toggle('hidden', !message);
-      }
+       function setPaymentMessage(message) {
+           if (!paymentMessageDiv) return;
+           paymentMessageDiv.textContent = message;
+           paymentMessageDiv.classList.toggle('hidden', !message);
+       }
 
-       function setErrorMessage(message) {
-          if (!errorMessageDiv) return;
-          errorMessageDiv.textContent = message;
-          errorMessageDiv.classList.toggle('hidden', !message);
-      }
+        function setErrorMessage(message) {
+           if (!errorMessageDiv) return;
+           errorMessageDiv.textContent = message;
+           errorMessageDiv.classList.toggle('hidden', !message);
+        }
 
-       function setCouponFeedback(msg, type = 'info') {
-          if (!couponFeedbackDiv) return;
-          couponFeedbackDiv.textContent = msg;
-          couponFeedbackDiv.className = 'mt-1 text-sm';
-          switch (type) {
-              case 'success': couponFeedbackDiv.classList.add('text-green-600'); break;
-              case 'error': couponFeedbackDiv.classList.add('text-red-600'); break;
-              default: couponFeedbackDiv.classList.add('text-gray-600');
-          }
-      }
+        function setCouponFeedback(msg, type = 'info') {
+           if (!couponFeedbackDiv) return;
+           couponFeedbackDiv.textContent = msg;
+           couponFeedbackDiv.className = 'mt-1 text-sm';
+           switch (type) {
+               case 'success': couponFeedbackDiv.classList.add('text-green-600'); break;
+               case 'error': couponFeedbackDiv.classList.add('text-red-600'); break;
+               default: couponFeedbackDiv.classList.add('text-gray-600');
+           }
+        }
 
-      function setLoading(isLoading) {
-          if (!submitBtn || !submitSpinner || !submitBtnText) return;
-          submitBtn.disabled = isLoading;
-          submitSpinner.classList.toggle('hidden', !isLoading);
-          submitBtnText.style.visibility = isLoading ? 'hidden' : 'visible';
-      }
+       function setLoading(isLoading) {
+           if (!submitBtn || !submitSpinner || !submitBtnText) return;
+           submitBtn.disabled = isLoading;
+           submitSpinner.classList.toggle('hidden', !isLoading);
+           submitBtnText.style.visibility = isLoading ? 'hidden' : 'visible';
+       }
 
-      // --- Initialization Functions ---
-      async function validateServiceData() {
-          if (serviceData && serviceData.stripeKey) {
-              return serviceData.stripeKey;
-          }
-          try {
-              const response = await fetch('/settings/stripe-api-key');
-              if (!response.ok) throw new Error('Failed to fetch Stripe key');
-              const data = await response.json();
-              return data?.stripe_api_key || null;
-          } catch (err) {
-              console.error('Error fetching Stripe key:', err);
-              return null;
-          }
-      }
+       // --- Initialization Functions ---
+       async function validateServiceData() {
+           if (serviceData && serviceData.stripeKey) {
+               return serviceData.stripeKey;
+           }
+           try {
+               const response = await fetch('/settings/stripe-api-key');
+               if (!response.ok) throw new Error('Failed to fetch Stripe key');
+               const data = await response.json();
+               return data?.stripe_api_key || null;
+           } catch (err) {
+               console.error('Error fetching Stripe key:', err);
+               return null;
+           }
+       }
 
-      const fetchStripeKey = async () => {
-            if (serviceData && serviceData.stripeKey) {
-                return serviceData.stripeKey;
-            }
-            try {
-                const response = await fetch('/settings/stripe-api-key');
-                if (!response.ok) throw new Error('Failed to fetch Stripe key');
-                const data = await response.json();
-                return data?.stripe_api_key || null;
-            }
-            catch (err) {
-                console.error('Error fetching Stripe key:', err);
-                return null;
-            }
-        };
+       const fetchStripeKey = async () => {
+             if (serviceData && serviceData.stripeKey) {
+                 return serviceData.stripeKey;
+             }
+             try {
+                 const response = await fetch('/settings/stripe-api-key');
+                 if (!response.ok) throw new Error('Failed to fetch Stripe key');
+                 const data = await response.json();
+                 return data?.stripe_api_key || null;
+             }
+             catch (err) {
+                 console.error('Error fetching Stripe key:', err);
+                 return null;
+             }
+         };
 
 
-      async function initializeStripeAndElements() {
-          setLoading(true);
-          setErrorMessage('');
+       async function initializeStripeAndElements() {
+           setLoading(true);
+           setErrorMessage('');
+           setPaymentMessage('');
 
-          // First validate required fields
-          await validateServiceData();
-          stripePublishableKey = await fetchStripeKey();
-          if (!stripePublishableKey) {
-              setErrorMessage('Payment processing is currently unavailable. Missing configuration.');
-              setLoading(false);
-              return;
-          }
-
-          if (typeof Stripe === 'undefined') {
-               setErrorMessage('Stripe.js failed to load. Please check your connection or contact support.');
+           // First validate required fields
+           await validateServiceData();
+           stripePublishableKey = await fetchStripeKey();
+           if (!stripePublishableKey) {
+               setErrorMessage('Payment processing is currently unavailable. Missing configuration.');
                setLoading(false);
                return;
-          }
-          stripe = Stripe(stripePublishableKey);
+           }
 
-          try {
-              const response = await fetch('/api/stripe/checkout-sessions', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                      product_id: '' + serviceData.id,
-                      quantity: 1 // Default quantity
-                  }),
-              });
-              if (!response.ok) {
-                  let errorMsg = 'Failed to create checkout session';
-                  try {
-                      const errorData = await response.json();
-                      errorMsg = errorData.message || errorMsg;
-                  } catch (parseError) {
-                      console.error('Error parsing error response:', parseError);
-                  }
-                  throw new Error(errorMsg);
-              }
-              
-              const { status, client_secret } = await response.json();
-              if (status !== 'success' || !client_secret) {
-                  throw new Error('Invalid payment response from server');
-              }
+           if (typeof Stripe === 'undefined') {
+                setErrorMessage('Stripe.js failed to load. Please check your connection or contact support.');
+                setLoading(false);
+                return;
+           }
+           stripe = Stripe(stripePublishableKey);
 
-              clientSecret = client_secret;
-              elements = stripe.elements({
-                  appearance: {
-                      theme: 'stripe',
-                      variables: {
-                          colorPrimary: '#2563eb',
-                          colorBackground: '#ffffff',
-                          colorText: '#30313d',
-                          colorDanger: '#df1b41',
-                          fontFamily: 'Poppins, system-ui, sans-serif',
-                          spacingUnit: '4px',
-                          borderRadius: '4px'
-                      }
-                  },
-                  clientSecret
-              });
-              paymentElement = elements.create('payment');
+           try {
+               const response = await fetch('/api/stripe/checkout-sessions', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({
+                       product_id: '' + serviceData.id,
+                       quantity: 1 // Default quantity
+                   }),
+               });
+               if (!response.ok) {
+                   let errorMsg = 'Failed to create checkout session';
+                   try {
+                       const errorData = await response.json();
+                       errorMsg = errorData.message || errorMsg;
+                   } catch (parseError) {
+                       console.error('Error parsing error response:', parseError);
+                   }
+                   throw new Error(errorMsg);
+               }
+               
+               const { status, client_secret } = await response.json();
+               if (status !== 'success' || !client_secret) {
+                   throw new Error('Invalid payment response from server');
+               }
 
-              const appearance = {
-                  theme: 'stripe',
-                  variables: {
-                      colorPrimary: '#2563eb',
-                      colorBackground: '#ffffff',
-                      colorText: '#30313d',
-                      colorDanger: '#df1b41',
-                      fontFamily: 'Poppins, system-ui, sans-serif',
-                      spacingUnit: '4px',
-                      borderRadius: '4px'
-                  }
-              };
-              // Initialize Stripe Elements with client_secret
-              elements = stripe.elements({
-                  appearance: {
-                      theme: 'stripe',
-                      variables: {
-                          colorPrimary: '#2563eb',
-                          colorBackground: '#ffffff',
-                          colorText: '#30313d',
-                          colorDanger: '#df1b41',
-                          fontFamily: 'Poppins, system-ui, sans-serif',
-                          spacingUnit: '4px',
-                          borderRadius: '4px'
-                      }
-                  },
-                  clientSecret
-              });
-              paymentElement = elements.create('payment');
+               clientSecret = client_secret;
+               elements = stripe.elements({
+                   appearance: {
+                       theme: 'stripe',
+                       variables: {
+                           colorPrimary: '#2563eb',
+                           colorBackground: '#ffffff',
+                           colorText: '#30313d',
+                           colorDanger: '#df1b41',
+                           fontFamily: 'Poppins, system-ui, sans-serif',
+                           spacingUnit: '4px',
+                           borderRadius: '4px'
+                       }
+                   },
+                   clientSecret
+               });
+               paymentElement = elements.create('payment');
 
-              if (paymentElementDiv) {
-                  paymentElement.mount(paymentElementDiv);
-              } else {
-                   throw new Error('Payment element mount point not found.');
-              }
+               const appearance = {
+                   theme: 'stripe',
+                   variables: {
+                       colorPrimary: '#2563eb',
+                       colorBackground: '#ffffff',
+                       colorText: '#30313d',
+                       colorDanger: '#df1b41',
+                       fontFamily: 'Poppins, system-ui, sans-serif',
+                       spacingUnit: '4px',
+                       borderRadius: '4px'
+                   }
+               };
+               // Initialize Stripe Elements with client_secret
+               elements = stripe.elements({
+                   appearance: {
+                       theme: 'stripe',
+                       variables: {
+                           colorPrimary: '#2563eb',
+                           colorBackground: '#ffffff',
+                           colorText: '#30313d',
+                           colorDanger: '#df1b41',
+                           fontFamily: 'Poppins, system-ui, sans-serif',
+                           spacingUnit: '4px',
+                           borderRadius: '4px'
+                       }
+                   },
+                   clientSecret
+               });
+               paymentElement = elements.create('payment');
 
-              paymentElement.on('ready', () => {
-                  if (submitBtn) submitBtn.disabled = false;
-                  setLoading(false);
-              });
-              paymentElement.on('change', (event) => {
-                  if (event.error) {
-                      setPaymentMessage(event.error.message);
-                      if (submitBtn) submitBtn.disabled = true;
-                  } else {
-                      setPaymentMessage('');
-                      // Re-enable submit button if it was ready and no longer has an error
-                      // Check if submit button exists and was disabled by this logic
-                      if (submitBtn && submitBtn.disabled && !paymentElement._invalid) {
-                         // Need a reliable way to know if it was disabled *because* of payment element error
-                         // For now, let's assume 'ready' handles initial enabling, and only disable on error.
-                         // If the element becomes valid again, we might need to re-enable here cautiously.
-                         // submitBtn.disabled = false; // Cautious re-enabling might be needed
-                      }
-                  }
-              });
+               if (paymentElementDiv) {
+                   paymentElement.mount(paymentElementDiv);
+               } else {
+                    throw new Error('Payment element mount point not found.');
+               }
 
-          } catch (error) { // This is the catch block in question
-              console.error('Stripe Elements initialization error:', error);
-              // *** FIX START ***
-              // Check if error exists and has a message property
-              const errorMessage = error && error.message ? error.message : 'An unknown error occurred during payment setup.';
-              setErrorMessage('Payment setup failed: ' + errorMessage);
-              // *** FIX END ***
-              setLoading(false);
-          }
-      }
+               paymentElement.on('ready', () => {
+                   if (submitBtn) submitBtn.disabled = false;
+                   setLoading(false);
+               });
+               paymentElement.on('change', (event) => {
+                   if (event.error) {
+                       setPaymentMessage(event.error.message);
+                       if (submitBtn) submitBtn.disabled = true;
+                   } else {
+                       setPaymentMessage('');
+                       // Re-enable submit button if it was ready and no longer has an error
+                       // Check if submit button exists and was disabled by this logic
+                       if (submitBtn && submitBtn.disabled && !paymentElement._invalid) {
+                          // Need a reliable way to know if it was disabled *because* of payment element error
+                          // For now, let's assume 'ready' handles initial enabling, and only disable on error.
+                          // If the element becomes valid again, we might need to re-enable here cautiously.
+                          // submitBtn.disabled = false; // Cautious re-enabling might be needed
+                       }
+                   }
+               });
 
-      // --- Event Handlers ---
-      async function handleCheckAvailability() {
-          if (!address1Input || !cityInput || !stateInput || !zip5Input || !checkBtn) {
-              console.error('Address input elements not found');
-              setAddressFeedback('⚠️ Internal error: Missing address fields.', 'error');
-              return;
-          }
-          const address = {
-              address1: address1Input.value.trim(),
-              city: cityInput.value.trim(),
-              state: stateInput.value.trim(),
-              zip5: zip5Input.value.trim()
-          };
-          setAddressFeedback('⏳ Checking availability...', 'loading');
-          checkBtn.disabled = true;
-          setErrorMessage('');
-          if (!address.address1 || !address.city || !address.state || !address.zip5) {
-              const missing = [];
-              if (!address.address1) missing.push('street address');
-              if (!address.city) missing.push('city');
-              if (!address.state) missing.push('state');
-              if (!address.zip5) missing.push('ZIP code');
-              setAddressFeedback("⚠️ Please fill in all address fields: " + missing.join(', '), 'error');
-              checkBtn.disabled = false;
-              return;
-          }
-          try {
-              const resp = await fetch('/api/geocode', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': 'Bearer ' + (serviceData?.authToken || '')
-                  },
-                  body: JSON.stringify({
-                  address: {
-                      address1: address.address1,
-                      city: address.city,
-                      state: address.state,
-                      zip5: address.zip5
-                  },
-                  })
-              });
-              if (!resp.ok) {
-                  let errorMsg = 'Failed to validate address';
-                  try {
-                      const errorData = await resp.json();
-                      errorMsg = errorData.message || errorMsg;
-                  } catch (parseError) {
-                      console.warn('Failed to parse error response:', parseError);
-                  }
-                  throw new Error(errorMsg);
-              }
-              const data = await resp.json();
-              if (data.inside_zone || data.in_service_area) {
-                  setAddressFeedback('✅ Address is in the service area!', 'success');
-                  validatedAddress = address;
-                  localStorage.setItem("validatedAddress", JSON.stringify(address));
-                  if (addressSection) addressSection.classList.add('opacity-50', 'pointer-events-none');
-                  checkBtn.disabled = true;
-                  if (paymentForm) paymentForm.classList.remove('hidden');
-                  await initializeStripeAndElements();
-              } else if (data.outside_zone) {
-                  setAddressFeedback('❌ Sorry, this address is outside our service area', 'error');
-              } else if (data.invalid_address) {
-                  setAddressFeedback('❌ Please enter a valid address', 'error');
-              } else {
-                  setAddressFeedback('❌ Service not available at this address', 'error');
-              }
-          } catch (error) {
-              console.error('Error checking address:', error);
-              setAddressFeedback('❌ Error checking address: ' + (error.message || 'Unknown error'), 'error');
-          } finally {
-               if (!validatedAddress && checkBtn) { checkBtn.disabled = false; }
-          }
-      }
+           } catch (error) { // This is the catch block in question
+               console.error('Stripe Elements initialization error:', error);
+               // *** FIX START ***
+               // Check if error exists and has a message property
+               const errorMessage = error && error.message ? error.message : 'An unknown error occurred during payment setup.';
+               setErrorMessage('Payment setup failed: ' + errorMessage);
+               // *** FIX END ***
+               setLoading(false);
+           }
+       }
 
-      async function handlePaymentSubmit(event) {
-          event.preventDefault();
-          setLoading(true);
-          setErrorMessage('');
-          setPaymentMessage('');
-          if (!stripe || !elements || !clientSecret) {
-              setErrorMessage('⚠️ Payment processing is not available. Please check your connection or contact support.');
-              setLoading(false);
-              return;
-            }
-          if (!paymentElement) {
-              setErrorMessage('⚠️ Payment element is not initialized. Please refresh the page and try again.');
-              setLoading(false);
-              return;
-          }
-          const userEmail = emailInput ? emailInput.value.trim() : '';
-          if (!userEmail) {
-              setErrorMessage('⚠️ Please enter a valid email address.', 'error');
-              setLoading(false);
-              return;
-          }
-          const serviceAddress = validatedAddress;
-          if (!serviceAddress) {
-              setErrorMessage('⚠️ Please validate your service address first');
-              setLoading(false);
-              return;
-          }
-          const sameAsServiceCheckbox = container.querySelector('#same-as-service');
-          const billingSameAsService = sameAsServiceCheckbox ? sameAsServiceCheckbox.checked : true;
-          let billingDetails = {
-            email: userEmail,
-            address: billingSameAsService ? {
-              line1: serviceAddress.address1,
-              city: serviceAddress.city,
-              state: serviceAddress.state,
-              postal_code: serviceAddress.zip5,
-              country: 'US'
-            } : {
-              line1: container.querySelector('#billing-address1').value.trim(),
-              city: container.querySelector('#billing-city').value.trim(),
-              state: container.querySelector('#billing-state').value.trim(),
-              postal_code: container.querySelector('#billing-zip').value.trim(),
-              country: 'US'
-            }
-          };
+       // --- Event Handlers ---
+       async function handleCheckAvailability() {
+           if (!address1Input || !cityInput || !stateInput || !zip5Input || !checkBtn) {
+               console.error('Address input elements not found');
+               setAddressFeedback('⚠️ Internal error: Missing address fields.', 'error');
+               return;
+           }
+           const address = {
+               address1: address1Input.value.trim(),
+               city: cityInput.value.trim(),
+               state: stateInput.value.trim(),
+               zip5: zip5Input.value.trim()
+           };
+           setAddressFeedback('⏳ Checking availability...', 'loading');
+           checkBtn.disabled = true;
+           setErrorMessage('');
+           if (!address.address1 || !address.city || !address.state || !address.zip5) {
+               const missing = [];
+               if (!address.address1) missing.push('street address');
+               if (!address.city) missing.push('city');
+               if (!address.state) missing.push('state');
+               if (!address.zip5) missing.push('ZIP code');
+               setAddressFeedback("⚠️ Please fill in all address fields: " + missing.join(', '), 'error');
+               checkBtn.disabled = false;
+               return;
+           }
+           try {
+               const resp = await fetch('/api/geocode', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                       'Authorization': 'Bearer ' + (serviceData?.authToken || '')
+                   },
+                   body: JSON.stringify({
+                   address: {
+                       address1: address.address1,
+                       city: address.city,
+                       state: address.state,
+                       zip5: address.zip5
+                   },
+                   })
+               });
+               if (!resp.ok) {
+                   let errorMsg = 'Failed to validate address';
+                   try {
+                       const errorData = await resp.json();
+                       errorMsg = errorData.message || errorMsg;
+                   } catch (parseError) {
+                       console.warn('Failed to parse error response:', parseError);
+                   }
+                   throw new Error(errorMsg);
+               }
+               const data = await resp.json();
+               if (data.inside_zone || data.in_service_area) {
+                   setAddressFeedback('✅ Address is in the service area!', 'success');
+                   validatedAddress = address;
+                   localStorage.setItem("validatedAddress", JSON.stringify(address));
+                   if (addressSection) addressSection.classList.add('opacity-50', 'pointer-events-none');
+                   checkBtn.disabled = true;
+                   if (paymentForm) paymentForm.classList.remove('hidden');
+                   await initializeStripeAndElements();
+               } else if (data.outside_zone) {
+                   setAddressFeedback('❌ Sorry, this address is outside our service area', 'error');
+               } else if (data.invalid_address) {
+                   setAddressFeedback('❌ Please enter a valid address', 'error');
+               } else {
+                   setAddressFeedback('❌ Service not available at this address', 'error');
+               }
+           } catch (error) {
+               console.error('Error checking address:', error);
+               setAddressFeedback('❌ Error checking address: ' + (error.message || 'Unknown error'), 'error');
+           } finally {
+                if (!validatedAddress && checkBtn) { checkBtn.disabled = false; }
+           }
+       }
 
-          // Submit the form and collect payment details
-          const {error: submitError} = await elements.submit();
+       async function handlePaymentSubmit(event) {
+           event.preventDefault();
+           setLoading(true);
+           setErrorMessage('');
+           setPaymentMessage('');
+           if (!stripe || !elements || !clientSecret) {
+               setErrorMessage('⚠️ Payment processing is not available. Please check your connection or contact support.');
+               setLoading(false);
+               return;
+             }
+           if (!paymentElement) {
+               setErrorMessage('⚠️ Payment element is not initialized. Please refresh the page and try again.');
+               setLoading(false);
+               return;
+           }
+           const userEmail = emailInput ? emailInput.value.trim() : '';
+           if (!userEmail) {
+               setErrorMessage('⚠️ Please enter a valid email address.', 'error');
+               setLoading(false);
+               return;
+           }
+           const serviceAddress = validatedAddress;
+           if (!serviceAddress) {
+               setErrorMessage('⚠️ Please validate your service address first');
+               setLoading(false);
+               return;
+           }
+           const sameAsServiceCheckbox = container.querySelector('#same-as-service');
+           const billingSameAsService = sameAsServiceCheckbox ? sameAsServiceCheckbox.checked : true;
+           let billingDetails = {
+             email: userEmail,
+             address: billingSameAsService ? {
+               line1: serviceAddress.address1,
+               city: serviceAddress.city,
+               state: serviceAddress.state,
+               postal_code: serviceAddress.zip5,
+               country: 'US'
+             } : {
+               line1: container.querySelector('#billing-address1').value.trim(),
+               city: container.querySelector('#billing-city').value.trim(),
+               state: container.querySelector('#billing-state').value.trim(),
+               postal_code: container.querySelector('#billing-zip').value.trim(),
+               country: 'US'
+             }
+           };
 
-          if (submitError) {
-              // Show error to your customer (e.g., invalid information)
-              setErrorMessage(submitError.message);
-              setLoading(false);
-              return;
-          }
+           // Submit the form and collect payment details
+           const {error: submitError} = await elements.submit();
 
-          // Confirm the payment
-          const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
-              elements,
-              clientSecret,
-              confirmParams: {
-                  return_url: window.location.origin + '/thank-you' + '?payment_status=completed',
-                  receipt_email: userEmail,
-                  payment_method_data: {
-                      billing_details: billingDetails
-                  }
-              },
-              redirect: 'always'
-          });
+           if (submitError) {
+               // Show error to your customer (e.g., invalid information)
+               setErrorMessage(submitError.message);
+               setLoading(false);
+               return;
+           }
 
-          if (submitError) {
-              console.error("Stripe confirmation error:", submitError);
-              setErrorMessage(submitError.message || 'An unexpected error occurred during payment.');
-              setLoading(false);
-              return;
-          }
-          
-          if (paymentIntent && paymentIntent.status === 'succeeded') {
-              setErrorMessage('');
-              setPaymentMessage('Payment succeeded! Redirecting...');
-              setLoading(false);
-              // Store successful payment in localStorage
-              localStorage.setItem('lastSuccessfulPayment', JSON.stringify({
-                  amount: paymentIntent.amount,
-                  currency: paymentIntent.currency,
-                  serviceId: serviceData.id,
-                  timestamp: Date.now()
-              }));
-              // Disable form and show success state
-              if (paymentForm) paymentForm.classList.add('opacity-50', 'pointer-events-none');
-              if (submitBtn) {
-                  submitBtn.disabled = true;
-                  submitBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                  submitBtn.classList.add('bg-green-500');
-              }
-              // Redirect to age page after 2 seconds
-              setTimeout(() => {
-                  window.location.href = '/age?payment=success&serviceId=' + encodeURIComponent(serviceData.id);
-              }, 2000);
-          }
-          else if (paymentIntent) {
-              switch (paymentIntent.status) {
-                  case 'processing':
-                      setPaymentMessage("Payment processing - we\'ll update you when complete");
-                      break;
-                  case 'requires_action':
-                      setPaymentMessage('Additional authentication required');
-                      break;
-                  case 'requires_payment_method':
-                      setPaymentMessage('Payment failed - please try another method');
-                      break;
-                  default:
-                      setPaymentMessage('Payment status: ' + paymentIntent.status);
-              }
-          }
-          setLoading(false);
-      }
+           // Confirm the payment
+           const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+               elements,
+               clientSecret,
+               confirmParams: {
+                   return_url: window.location.origin + '/thank-you' + '?payment_status=completed',
+                   receipt_email: userEmail,
+                   payment_method_data: {
+                       billing_details: billingDetails
+                   }
+               },
+               redirect: 'always'
+           });
 
-      async function handleApplyCoupon() {
-          if (!couponInput || !applyCouponBtn) return;
-          const code = couponInput.value.trim();
-          if (!code) {
-              setCouponFeedback('Please enter a coupon code', 'error');
-              return;
-          }
-          setCouponFeedback('⏳ Applying coupon...', 'info');
-          applyCouponBtn.disabled = true;
-          try {
-              const response = await fetch('/api/apply-coupon', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': 'Bearer ' + (serviceData?.authToken || '')
-                  },
-                  body: JSON.stringify({
-                      code: code,
-                      serviceId: serviceData.id
-                  })
-              });
-              const result = await response.json();
-              if (result.valid) {
-                  setCouponFeedback('Coupon applied! ' + (result.message || ''), 'success');
-              } else {
-                  setCouponFeedback((result.message || 'Invalid coupon code'), 'error');
-              }
-          } catch (error) {
-              setCouponFeedback('⚠️ Failed to apply coupon - please try again', 'error');
-              console.error('Coupon API error:', error);
-          } finally {
-              applyCouponBtn.disabled = false;
-          }
-      }
+           if (submitError) {
+               console.error("Stripe confirmation error:", submitError);
+               setErrorMessage(submitError.message || 'An unexpected error occurred during payment.');
+               setLoading(false);
+               return;
+           }
+           
+           if (paymentIntent && paymentIntent.status === 'succeeded') {
+               setErrorMessage('');
+               setPaymentMessage('Payment succeeded! Redirecting...');
+               setLoading(false);
+               // Store successful payment in localStorage
+               localStorage.setItem('lastSuccessfulPayment', JSON.stringify({
+                   amount: paymentIntent.amount,
+                   currency: paymentIntent.currency,
+                   serviceId: serviceData.id,
+                   timestamp: Date.now()
+               }));
+               // Disable form and show success state
+               if (paymentForm) paymentForm.classList.add('opacity-50', 'pointer-events-none');
+               if (submitBtn) {
+                   submitBtn.disabled = true;
+                   submitBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                   submitBtn.classList.add('bg-green-500');
+               }
+               // Redirect to age page after 2 seconds
+               setTimeout(() => {
+                   window.location.href = '/age?payment=success&serviceId=' + encodeURIComponent(serviceData.id);
+               }, 2000);
+           }
+           else if (paymentIntent) {
+               switch (paymentIntent.status) {
+                   case 'processing':
+                       setPaymentMessage("Payment processing - we\'ll update you when complete");
+                       break;
+                   case 'requires_action':
+                       setPaymentMessage('Additional authentication required');
+                       break;
+                   case 'requires_payment_method':
+                       setPaymentMessage('Payment failed - please try another method');
+                       break;
+                   default:
+                       setPaymentMessage('Payment status: ' + paymentIntent.status);
+               }
+           }
+           setLoading(false);
+       }
 
-      // --- Attach Event Listeners ---
-      if (checkBtn) checkBtn.addEventListener('click', handleCheckAvailability);
-      if (paymentForm) paymentForm.addEventListener('submit', handlePaymentSubmit);
-      if (applyCouponBtn) applyCouponBtn.addEventListener('click', handleApplyCoupon);
-      
-      // Handle billing address checkbox change
-      const sameAsServiceCheckbox = container.querySelector('#same-as-service');
-      const billingAddressFields = container.querySelector('#billing-address-fields');
-      if (sameAsServiceCheckbox && billingAddressFields) {
-          sameAsServiceCheckbox.addEventListener('change', (e) => {
-              billingAddressFields.classList.toggle('hidden', e.target.checked);
-              if (!e.target.checked) {
-                  // Focus first field when showing billing address
-                  const firstField = billingAddressFields.querySelector('input');
-                  if (firstField) firstField.focus();
-              }
-          });
-          // Initialize visibility based on checkbox state
-          billingAddressFields.classList.toggle('hidden', sameAsServiceCheckbox.checked);
-      }
+       async function handleApplyCoupon() {
+           if (!couponInput || !applyCouponBtn) return;
+           const code = couponInput.value.trim();
+           if (!code) {
+               setCouponFeedback('Please enter a coupon code', 'error');
+               return;
+           }
+           setCouponFeedback('⏳ Applying coupon...', 'info');
+           applyCouponBtn.disabled = true;
+           try {
+               const response = await fetch('/api/apply-coupon', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                       'Authorization': 'Bearer ' + (serviceData?.authToken || '')
+                   },
+                   body: JSON.stringify({
+                       code: code,
+                       serviceId: serviceData.id
+                   })
+               });
+               const result = await response.json();
+               if (result.valid) {
+                   setCouponFeedback('Coupon applied! ' + (result.message || ''), 'success');
+               } else {
+                   setCouponFeedback((result.message || 'Invalid coupon code'), 'error');
+               }
+           } catch (error) {
+               setCouponFeedback('⚠️ Failed to apply coupon - please try again', 'error');
+               console.error('Coupon API error:', error);
+           } finally {
+               applyCouponBtn.disabled = false;
+           }
+       }
 
-      if (checkBtn) checkBtn.disabled = !(address1Input?.value && cityInput?.value && stateInput?.value && zip5Input?.value);
-      [address1Input, cityInput, stateInput, zip5Input].forEach(input => {
-          if (input) {
-              input.addEventListener('input', () => {
-                  if (checkBtn) checkBtn.disabled = !(address1Input?.value && cityInput?.value && stateInput?.value && zip5Input?.value);
-                  if (validatedAddress) { // Reset if address changed after validation
-                      setAddressFeedback('', 'info');
-                      if (paymentForm) paymentForm.classList.add('hidden');
-                      if (paymentElement) { try { paymentElement.unmount(); } catch(e) { console.warn("Error unmounting payment element:", e); } } // Safely unmount
-                      validatedAddress = null;
-                      clientSecret = null;
-                      if (submitBtn) submitBtn.disabled = true;
-                      if (addressSection) addressSection.classList.remove('opacity-50', 'pointer-events-none');
-                      if (checkBtn) checkBtn.disabled = !(address1Input?.value && cityInput?.value && stateInput?.value && zip5Input?.value);
-                  }
-              });
-          }
-      });
+       // --- Attach Event Listeners ---
+       if (checkBtn) checkBtn.addEventListener('click', handleCheckAvailability);
+       if (paymentForm) paymentForm.addEventListener('submit', handlePaymentSubmit);
+       if (applyCouponBtn) applyCouponBtn.addEventListener('click', handleApplyCoupon);
+       
+       // Handle billing address checkbox change
+       const sameAsServiceCheckbox = container.querySelector('#same-as-service');
+       const billingAddressFields = container.querySelector('#billing-address-fields');
+       if (sameAsServiceCheckbox && billingAddressFields) {
+           sameAsServiceCheckbox.addEventListener('change', (e) => {
+               billingAddressFields.classList.toggle('hidden', e.target.checked);
+               if (!e.target.checked) {
+                   // Focus first field when showing billing address
+                   const firstField = billingAddressFields.querySelector('input');
+                   if (firstField) firstField.focus();
+               }
+           });
+           // Initialize visibility based on checkbox state
+           billingAddressFields.classList.toggle('hidden', sameAsServiceCheckbox.checked);
+       }
 
-      // --- Initial State ---
-      setLoading(false);
-      setErrorMessage('');
-      setPaymentMessage('');
-      setCouponFeedback('');
+       if (checkBtn) checkBtn.disabled = !(address1Input?.value && cityInput?.value && stateInput?.value && zip5Input?.value);
+       [address1Input, cityInput, stateInput, zip5Input].forEach(input => {
+           if (input) {
+               input.addEventListener('input', () => {
+                   if (checkBtn) checkBtn.disabled = !(address1Input?.value && cityInput?.value && stateInput?.value && zip5Input?.value);
+                   if (validatedAddress) { // Reset if address changed after validation
+                       setAddressFeedback('', 'info');
+                       if (paymentForm) paymentForm.classList.add('hidden');
+                       if (paymentElement) { try { paymentElement.unmount(); } catch(e) { console.warn("Error unmounting payment element:", e); } } // Safely unmount
+                       validatedAddress = null;
+                       clientSecret = null;
+                       if (submitBtn) submitBtn.disabled = true;
+                       if (addressSection) addressSection.classList.remove('opacity-50', 'pointer-events-none');
+                       if (checkBtn) checkBtn.disabled = !(address1Input?.value && cityInput?.value && stateInput?.value && zip5Input?.value);
+                   }
+               });
+           }
+       });
 
-    })(); // End IIFE
-  </script>
-  `; // End template literal
-}; // End export default
+       // --- Initial State ---
+       setLoading(false);
+       setErrorMessage('');
+       setPaymentMessage('');
+       setCouponFeedback('');
+
+     }; // End initServiceValidationComponent function
+
+   </script>
+   `; // End template literal
+ }; // End export default
