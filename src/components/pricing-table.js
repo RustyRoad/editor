@@ -421,14 +421,46 @@ export default (editor, opts = {}) => {
                   const publishableKey = await fetchStripeKey();
                   
                   stripe = Stripe(publishableKey);
+
+                  // Create checkout session first
+                  const sessionResponse = await fetch('/api/stripe/checkout-sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      product_id: '' + serviceData.id,
+                      quantity: 1 // Default quantity
+                    })
+                  });
+
+                  if (!sessionResponse.ok) {
+                    let errorMsg = 'Failed to create checkout session';
+                    try {
+                      const errorData = await sessionResponse.json();
+                      errorMsg = errorData.message || errorMsg;
+                    } catch (parseError) {
+                      console.error('Error parsing error response:', parseError);
+                    }
+                    throw new Error(errorMsg);
+                  }
+                  
+                  const { status, client_secret } = await sessionResponse.json();
+                  if (status !== 'success' || !client_secret) {
+                    throw new Error('Invalid payment response from server');
+                  }
+
+                  // Initialize Elements with client_secret
                   elements = stripe.elements({
+                    clientSecret: client_secret,
                     appearance: {
                       theme: 'stripe',
                       variables: {
                         colorPrimary: '#2563eb',
                         colorBackground: '#ffffff',
                         colorText: '#30313d',
-                        fontFamily: 'Poppins, system-ui, sans-serif'
+                        colorDanger: '#df1b41',
+                        fontFamily: 'Poppins, system-ui, sans-serif',
+                        spacingUnit: '4px',
+                        borderRadius: '4px'
                       }
                     }
                   });
