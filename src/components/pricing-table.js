@@ -603,7 +603,14 @@ export default (editor, opts = {}) => {
 
               checkBtn.addEventListener('click', handleCheckAvailability);
 
-              document.body.appendChild(modal);
+              // Ensure modal is properly added to DOM
+              try {
+                document.body.appendChild(modal);
+                console.log('Modal loaded successfully');
+              } catch (err) {
+                console.error('Failed to load modal:', err);
+                return;
+              }
             }
 
             // Attach click handlers
