@@ -327,7 +327,7 @@ export default (editor, opts = {}) => {
 
               modal.innerHTML = \`
                 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-                <div class="service-validation-container relative p-3 md:p-5 w-full max-w-md mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 relative" style="font-family: 'Poppins', sans-serif; max-width:95vw;">
+                <div class="service-validation-container relative p-3 md:p-8 max-w-xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800" style="font-family: 'Poppins', sans-serif;">
                   <button id="modal-close-button" style="right: 0;" class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-2xl text-gray-500 shadow focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Close">×</button>
 
                   <div class="mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
@@ -728,7 +728,7 @@ export default (editor, opts = {}) => {
           product2: this.get('product2'),
           product3: this.get('product3')
         });
-        
+
       },
 
       // Method to render content based on state using nested components
@@ -764,72 +764,62 @@ export default (editor, opts = {}) => {
           else if (displayedServices.length === 0 && selectedProductIds.length === 0 && services.length === 0) {
             this.append('<div class="text-center text-gray-500 p-4">No services available.</div>');
           }
-          else {
-            // Create or get the grid container
-            let gridContainer = this.components().filter(comp => comp.get('attributes').class?.includes('pricing-table-grid'))[0];
-            if (!gridContainer) {
-              const gridCols = this.get('gridCols') || 'grid-cols-3';
-              const gridGap = this.get('gridGap') || 'gap-6';
-              gridContainer = this.components().add({
-                tagName: 'div',
-                attributes: { class: `pricing-table-grid flex flex-wrap justify-center ${gridGap} p-4` },
-                droppable: '.pricing-table-card', // Only allow pricing-card components inside
-                components: [] // Start with empty components
-              }, { at: 0 }); // Add as the first component
-            } else {
-              // Update grid classes if container already exists
-              const gridCols = this.get('gridCols') || 'grid-cols-3';
-              const gridGap = this.get('gridGap') || 'gap-6';
-              const currentClasses = gridContainer.get('attributes').class.split(' ');
-              const newClasses = currentClasses.filter(cls => !cls.startsWith('grid-cols-') && !cls.startsWith('gap-'));
-              newClasses.push(gridCols);
-              newClasses.push(gridGap);
-              gridContainer.set('attributes', { ...gridContainer.get('attributes'), class: newClasses.join(' ') });
-              gridContainer.empty(); // Clear existing cards to re-add based on selection
-            }
-
-
-            // Get features for each product
-            const productFeatures = {
-              product1: this.get('features1')?.split(',').map(f => f.trim()).filter(f => f) || [],
-              product2: this.get('features2')?.split(',').map(f => f.trim()).filter(f => f) || [],
-              product3: this.get('features3')?.split(',').map(f => f.trim()).filter(f => f) || []
-            };
-
-            // Add pricing-card components for each selected service
-            console.log('[Pricing Table Model] Displaying services:', displayedServices);
-            displayedServices.forEach((service, index) => {
-              const productId = ['product1', 'product2', 'product3'][index];
-              const features = productFeatures[productId];
-
-              // Add a pricing-card component
-              gridContainer.append({
-                type: 'pricing-card', // Use the nested component type
-                // Pass data to the pricing-card model
-                cardTitle: service.title,
-                cardDescription: service.description,
-                cardFeatures: features.join('\n'), // Pass features as newline-separated string
-                cardPrice: formatPrice(service.price, service.currency),
-                buttonText: 'Select Plan', // Or customize if needed
-                serviceId: service.id?.toString(), // Pass service ID
-                // The inner components of the pricing card are now defined in the pricing-card type defaults
-                // We don't need to define them here unless we want to override the defaults.
-                // The pricing-card's updateComponents method will handle setting the content based on traits.
-                // We need to ensure the data-service attribute is set on the button within the pricing-card.
-                // This should be handled by the pricing-card's updateComponents or toHTML method.
-                // Let's add a toHTML method to the pricing-card to set the data-service attribute.
-              });
-            });
-
-            // The content attribute is no longer used to hold the full HTML structure.
-            // The structure is defined by the nested components.
-            // We can remove the line setting the content attribute.
-            // this.set('content', pricingHtml); // Remove this line
+          // Create or get the flexbox container
+          let gridContainer = this.components().filter(comp => comp.get('attributes').class?.includes('pricing-table-grid'))[0];
+          const gridGap = this.get('gridGap') || 'gap-6';
+          const flexClass = `pricing-table-grid flex flex-wrap justify-center ${gridGap} p-4`;
+          if (!gridContainer) {
+            gridContainer = this.components().add({
+              tagName: 'div',
+              attributes: { class: flexClass },
+              droppable: '.pricing-table-card', // Only allow pricing-card components inside
+              components: [] // Start with empty components
+            }, { at: 0 }); // Add as the first component
+          } else {
+            gridContainer.set('attributes', { ...gridContainer.get('attributes'), class: flexClass });
+            gridContainer.empty(); // Clear existing cards to re-add based on selection
           }
         }
+
+
+        // Get features for each product
+        const productFeatures = {
+          product1: this.get('features1')?.split(',').map(f => f.trim()).filter(f => f) || [],
+          product2: this.get('features2')?.split(',').map(f => f.trim()).filter(f => f) || [],
+          product3: this.get('features3')?.split(',').map(f => f.trim()).filter(f => f) || []
+        };
+
+        // Add pricing-card components for each selected service
+        console.log('[Pricing Table Model] Displaying services:', displayedServices);
+        displayedServices.forEach((service, index) => {
+          const productId = ['product1', 'product2', 'product3'][index];
+          const features = productFeatures[productId];
+
+          // Add a pricing-card component
+          gridContainer.append({
+            type: 'pricing-card', // Use the nested component type
+            // Pass data to the pricing-card model
+            cardTitle: service.title,
+            cardDescription: service.description,
+            cardFeatures: features.join('\n'), // Pass features as newline-separated string
+            cardPrice: formatPrice(service.price, service.currency),
+            buttonText: 'Select Plan', // Or customize if needed
+            serviceId: service.id?.toString(), // Pass service ID
+            // The inner components of the pricing card are now defined in the pricing-card type defaults
+            // We don't need to define them here unless we want to override the defaults.
+            // The pricing-card's updateComponents method will handle setting the content based on traits.
+            // We need to ensure the data-service attribute is set on the button within the pricing-card.
+            // This should be handled by the pricing-card's updateComponents or toHTML method.
+            // Let's add a toHTML method to the pricing-card to set the data-service attribute.
+          });
+        });
+
+        // The content attribute is no longer used to hold the full HTML structure.
+        // The structure is defined by the nested components.
+        // We can remove the line setting the content attribute.
+        // this.set('content', pricingHtml); // Remove this line
       }
     },
-
     view: {
       onRender() {
         // The script is now included via the model's 'script' property
