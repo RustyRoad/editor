@@ -13,7 +13,7 @@ export default (editor, opts = {}) => {
     model: {
       defaults: {
         tagName: 'div',
-        attributes: { 'data-gjs-type': 'pricing-card', class: 'pricing-table-card bg-white dark:bg-gray-900 hover:bg-gray-50 dark:bg-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 p-6 flex flex-col basis-1/3 flex-shrink-0' },
+        attributes: { 'data-gjs-type': 'pricing-card', class: 'pricing-table-card bg-white dark:bg-gray-900 hover:bg-gray-50 dark:bg-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 p-6 flex flex-col basis-1/3 max-w-1/3 min-w-[250px] flex-1' },
         // Define the basic structure with IDs, content will be populated by updateComponents
         components: [
           {
@@ -772,7 +772,7 @@ export default (editor, opts = {}) => {
               const gridGap = this.get('gridGap') || 'gap-6';
               gridContainer = this.components().add({
                 tagName: 'div',
-                attributes: { class: `pricing-table-grid flex flex-wrap ${gridGap} p-4` },
+                attributes: { class: `pricing-table-grid flex flex-wrap justify-center ${gridGap} p-4` },
                 droppable: '.pricing-table-card', // Only allow pricing-card components inside
                 components: [] // Start with empty components
               }, { at: 0 }); // Add as the first component
