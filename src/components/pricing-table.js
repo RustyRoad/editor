@@ -13,7 +13,7 @@ export default (editor, opts = {}) => {
     model: {
       defaults: {
         tagName: 'div',
-        attributes: { 'data-gjs-type': 'pricing-card', class: 'pricing-table-card bg-white dark:bg-gray-900 hover:bg-gray-50 dark:bg-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 p-6 flex flex-col' },
+        attributes: { 'data-gjs-type': 'pricing-card', class: 'pricing-table-card bg-white dark:bg-gray-900 hover:bg-gray-50 dark:bg-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 p-6 flex flex-col w-auto min-w-0' },
         // Define the basic structure with IDs, content will be populated by updateComponents
         components: [
           {
