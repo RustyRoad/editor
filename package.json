@@ -1,6 +1,6 @@
 {
   "name": "@rustyroad/editor",
-  "version": "1.0.127",
+  "version": "1.0.240",
   "description": "A web-based editor for Rusty Road",
   "main": "dist/index.js",
   "repository": {
@@ -22,7 +22,9 @@
   "license": "MIT",
   "dependencies": {
     "@stripe/stripe-js": "^7.0.0",
+    "@types/esri-leaflet": "^3.0.3",
     "css": "^3.0.0",
+    "esri-leaflet": "^3.0.16",
     "grapesjs": "^0.22.6",
     "grapesjs-component-code-editor": "^1.0.20",
     "grapesjs-custom-code": "^1.0.2",
@@ -31,6 +33,7 @@
     "grapesjs-style-filter": "^1.0.2",
     "grapesjs-tailwind": "^1.0.10",
     "grapesjs-tooltip": "^0.1.8",
+    "puppeteer": "^24.8.0",
     "stripe": "^18.0.0"
   }
 }

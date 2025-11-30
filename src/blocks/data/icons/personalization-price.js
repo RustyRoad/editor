@@ -1,0 +1,1 @@
+export const source = '<svg fill="none" viewBox="0 0 266 150" width="266" height="150"><path fill="#FFFFFF" d="M0 0h266v150H0z"></path><text x="133" y="75" text-anchor="middle" fill="#10B981" font-size="24" font-family="Arial" font-weight="bold">$29</text></svg>';

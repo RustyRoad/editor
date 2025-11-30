@@ -1,203 +1,67 @@
-// Helper function to format currency
-const formatPrice = (amount, currency) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD', // Default to USD
-    }).format(amount);
-  };
-  
-  export default (service = {}) => { // Synchronous, only needs service data
-    // Basic validation
-    if (!service.id || typeof service.price === 'undefined' || !service.title) {
-      console.error("[Checkout Template] Invalid service data", { service });
-      return '<div class="text-red-600">Error: Missing required service information</div>';
+import { formatPrice } from './modal-ui';
+export default (function (service) {
+    if (service === void 0) { service = {}; }
+    // Handle different data structure cases:
+    // 1. Direct service data object
+    // 2. GrapesJS model with attributes
+    // 3. GrapesJS model with data in model itself
+    var serviceData;
+    try {
+        // Guard: If input is a GrapesJS editor instance
+        if (typeof service === 'object' && service !== null &&
+            'getConfig' in service && typeof service.getConfig === 'function' &&
+            'Panels' in service && typeof service.Panels === 'object') {
+            console.error('[Checkout Template] Received GrapesJS editor instance instead of service data.', { input: service });
+            return '<div class="text-red-500 p-4 border border-red-500 rounded">Error: Checkout component configured incorrectly. Expected service data.</div>';
+        }
+        if (typeof service === 'string') {
+            serviceData = JSON.parse(service);
+        }
+        else {
+            serviceData = service;
+        }
+        // Normalize the data
+        serviceData = {
+            id: serviceData.id || '',
+            stripe_product_id: serviceData.stripe_product_id || '',
+            name: serviceData.name || 'Untitled Service',
+            price: typeof serviceData.price === 'number' ? serviceData.price : 0,
+            description: serviceData.description || '',
+            images: Array.isArray(serviceData.images) ? serviceData.images : [],
+            currency: (serviceData.currency || 'USD').toUpperCase()
+        };
+        console.log("[Checkout Template] Service data:", serviceData);
+        // Basic validation
+        if (!serviceData.id) {
+            // Enhanced error logging for easier debugging
+            var requiredFields = ['id', 'stripe_product_id', 'name', 'price'];
+            var receivedFields = Object.keys(serviceData);
+            console.error("[Checkout Template] Missing required 'id' field in service data.", {
+                input: service,
+                processed: serviceData,
+                availableProps: receivedFields,
+                requiredFields: requiredFields,
+                message: "Ensure the service object passed to the checkout template includes a unique 'id'."
+            });
+            // More descriptive error for UI
+            return "\n        <div class=\"text-red-600 p-4\">\n          <strong>Error:</strong> Missing required service information.<br>\n          <span>Required fields: ".concat(requiredFields.join(', '), "</span><br>\n          <span>Received fields: ").concat(receivedFields.join(', '), "</span>\n        </div>\n      ");
+        }
+        // Use the bin icon or a placeholder
+        var imageUrl = 'https://spotlessbinco.com/assets/bin-icon.png';
+        if (serviceData.images && serviceData.images.length > 0 && typeof serviceData.images[0] === 'string') {
+            var firstImage = serviceData.images[0];
+            if (firstImage.startsWith('http')) {
+                imageUrl = firstImage;
+            }
+        }
+        var formattedPrice = formatPrice(serviceData.price, serviceData.currency || 'USD');
+        var buttonText = serviceData.price > 0 ? "Pay ".concat(formattedPrice, " & Schedule") : 'Get Started';
+        return "\n      <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n      <link href=\"https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap\" rel=\"stylesheet\">\n      \n      <div class=\"fixed left-0 top-0 hidden h-full w-1/2 bg-white lg:block\" aria-hidden=\"true\"></div>\n      <div class=\"fixed right-0 top-0 hidden h-full w-1/2 bg-blue-800 lg:block\" aria-hidden=\"true\"></div>\n      \n      <div class=\"relative mx-auto grid grid-cols-1 gap-x-16 lg:grid-cols-2 lg:px-8\" style=\"font-family: 'Poppins', sans-serif;\">\n        <h1 class=\"sr-only\">Spotless Bin Co Checkout</h1>\n      \n        <!-- Summary -->\n        <section aria-labelledby=\"summary-heading\" class=\"bg-blue-800 pb-12 pt-6 text-blue-200 md:px-10 lg:col-start-2 lg:mx-auto lg:w-full lg:max-w-lg lg:bg-transparent lg:px-0 lg:pb-24 lg:pt-0\">\n          <div class=\"mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0\">\n            <h2 id=\"summary-heading\" class=\"text-xl font-bold text-white\">Order Summary</h2>\n            <dl class=\"mt-4\">\n              <dt class=\"text-sm font-medium text-blue-200\">Amount due</dt>\n              <dd class=\"mt-1 text-3xl font-bold tracking-tight text-white\">".concat(formattedPrice, "</dd>\n            </dl>\n            <ul role=\"list\" class=\"divide-y divide-white divide-opacity-10 text-sm font-medium mt-6\">\n              <li class=\"flex items-start space-x-4 py-6\">\n                <img src=\"").concat(imageUrl, "\" alt=\"Bin cleaning icon\" class=\"h-20 w-20 flex-none rounded-md object-cover object-center border border-gray-200\" />\n                <div class=\"flex-auto space-y-1\">\n                  <h3 class=\"text-white\">").concat(serviceData.name, "</h3>\n                  <p>").concat(serviceData.description || 'One-time Residential Bin Cleaning', "</p>\n                </div>\n                <p class=\"flex-none text-base font-medium text-white\">").concat(formattedPrice, "</p>\n              </li>\n            </ul>\n            <dl class=\"space-y-6 border-t border-white border-opacity-10 pt-6 text-sm font-medium\">\n              <div class=\"flex items-center justify-between border-t border-white border-opacity-10 pt-6 text-white\">\n                <dt class=\"text-base\">Total</dt>\n                <dd class=\"text-base\">").concat(formattedPrice, "</dd>\n              </div>\n            </dl>\n          </div>\n        </section>\n      \n        <!-- Details -->\n        <section aria-labelledby=\"details-heading\" class=\"py-16 lg:col-start-1 lg:mx-auto lg:w-full lg:max-w-lg lg:pb-24 lg:pt-0\">\n          <h2 id=\"details-heading\" class=\"sr-only\">Payment and Service Details</h2>\n          <form id=\"payment-form\">\n            <div class=\"mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0\">\n              <!-- Contact Info -->\n              <h3 class=\"text-lg font-medium text-gray-900\">Contact Information</h3>\n              <label for=\"email\" class=\"block mt-4 text-sm font-medium text-gray-700\">Email address</label>\n              <input type=\"email\" id=\"email\" name=\"email\" autocomplete=\"email\" required class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm\" />\n          \n              <!-- Payment -->\n              <h3 class=\"mt-10 text-lg font-medium text-gray-900\">Payment Details</h3>\n              <div class=\"mt-4 text-sm text-gray-500\">Enter your payment information below.</div>\n              <div class=\"mt-6\" id=\"payment-element\"></div>\n          \n              <!-- Service Address -->\n              <h3 class=\"mt-10 text-lg font-medium text-gray-900\">Service Address</h3>\n              <div class=\"mt-1 text-sm text-gray-500\">Where should we clean?</div>\n              <div class=\"grid grid-cols-1 gap-4 mt-2\">\n                <div>\n                  <label for=\"address1\" class=\"block text-sm font-medium text-gray-700\">Street Address</label>\n                  <input type=\"text\" id=\"address1\" name=\"address1\" autocomplete=\"address-line1\" required class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm\" />\n                </div>\n                <div class=\"grid grid-cols-2 gap-4\">\n                  <div>\n                    <label for=\"city\" class=\"block text-sm font-medium text-gray-700\">City</label>\n                    <input type=\"text\" id=\"city\" name=\"city\" autocomplete=\"address-level2\" required class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm\" />\n                  </div>\n                  <div>\n                    <label for=\"state\" class=\"block text-sm font-medium text-gray-700\">State</label>\n                    <input type=\"text\" id=\"state\" name=\"state\" autocomplete=\"address-level1\" required class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm\" />\n                  </div>\n                </div>\n                <div>\n                  <label for=\"zip5\" class=\"block text-sm font-medium text-gray-700\">ZIP Code</label>\n                  <input type=\"text\" id=\"zip5\" name=\"zip5\" autocomplete=\"postal-code\" required class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm\" />\n                </div>\n              </div>\n              <button type=\"button\" id=\"check-availability\" class=\"mt-4 px-4 py-2 rounded-md bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500\">Check Availability</button>\n              <div id=\"address-feedback\" class=\"mt-2 text-sm\"></div>\n          \n              <!-- Billing same as service -->\n              <div class=\"mt-10 flex items-center\">\n                <input id=\"same-as-shipping\" name=\"same-as-shipping\" type=\"checkbox\" checked class=\"h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500\" />\n                <label for=\"same-as-shipping\" class=\"ml-2 text-sm font-medium text-gray-900\">Service & Billing address same</label>\n              </div>\n          \n              <!-- Coupon -->\n              <div class=\"mt-10\">\n                <label for=\"coupon\" class=\"block text-sm font-medium text-gray-700\">Coupon Code</label>\n                <div class=\"mt-1 flex\">\n                  <input type=\"text\" id=\"coupon\" name=\"coupon\" placeholder=\"BINBUCKS5\" class=\"block w-full rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm\" />\n                  <button type=\"button\" class=\"rounded-r-md border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500\">Apply</button>\n                </div>\n              </div>\n          \n              <!-- Submit -->\n              <div class=\"mt-10 flex justify-end border-t border-gray-200 pt-6\">\n                <button type=\"submit\" id=\"submit-button\" class=\"rounded-md bg-green-500 px-6 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50\" disabled>").concat(buttonText, "</button>\n              </div>\n              <div id=\"error-message\" class=\"mt-4 text-sm text-red-600 text-right\"></div>\n            </div>\n          </form>\n        </section>\n      </div>\n      <script>\n        (function() {\n          const addressInput = document.getElementById('address1');\n          const cityInput = document.getElementById('city');\n          const stateInput = document.getElementById('state');\n          const zipInput = document.getElementById('zip5');\n          const checkBtn = document.getElementById('check-availability');\n          const feedbackDiv = document.getElementById('address-feedback');\n          const submitBtn = document.getElementById('submit-button');\n    \n          function setFeedback(msg, color) {\n            feedbackDiv.textContent = msg;\n            feedbackDiv.style.color = color;\n          }\n    \n          function setSubmitEnabled(enabled) {\n            if (enabled) {\n              submitBtn.removeAttribute('disabled');\n              submitBtn.classList.remove('opacity-50');\n            } else {\n              submitBtn.setAttribute('disabled', 'disabled');\n              submitBtn.classList.add('opacity-50');\n            }\n          }\n    \n          setSubmitEnabled(false);\n    \n          checkBtn.addEventListener('click', async function() {\n            const address = addressInput.value.trim();\n            setFeedback('\u23F3 Checking...', '#2563eb');\n            setSubmitEnabled(false);\n    \n            if (!address) {\n              setFeedback('Please enter an address.', '#b91c1c');\n              return;\n            }\n    \n            try {\n              const resp = await fetch('/api/check-availability', {\n                method: 'POST',\n                headers: { 'Content-Type': 'application/json' },\n                body: JSON.stringify({\n                  street: addressInput.value.trim(),\n                  city: cityInput.value.trim(),\n                  state: stateInput.value.trim(),\n                  zip: zipInput.value.trim()\n                })\n              });\n              if (!resp.ok) {\n                throw new Error('API error');\n              }\n              const data = await resp.json();\n              if (data.in_service_area) {\n                setFeedback('\u2705 Address is in service area.', '#16a34a');\n                setSubmitEnabled(true);\n              } else {\n                setFeedback('\u274C Address is outside the service area.', '#b91c1c');\n                setSubmitEnabled(false);\n              }\n            } catch (e) {\n              setFeedback('\u26A0\uFE0F Could not verify address. Please check and try again.', '#b91c1c');\n              setSubmitEnabled(false);\n            }\n          });\n    \n          addressInput.addEventListener('input', function() {\n            setFeedback('', '');\n            setSubmitEnabled(false);\n          });\n        })();\n      </script>\n    ");
     }
-  
-    // Use the bin icon or a placeholder
-    let imageUrl = 'https://spotlessbinco.com/assets/bin-icon.png'; // Default bin icon
-    if (service.images && service.images.length > 0 && typeof service.images[0] === 'string') {
-      const firstImage = service.images[0];
-      if (firstImage.startsWith('http')) {
-        imageUrl = firstImage;
-      }
+    catch (err) {
+        console.error("[Checkout Template] Failed to process service data:", err, {
+            input: service
+        });
+        return '<div class="text-red-600 p-4">Error: Invalid service data</div>';
     }
-  
-    const formattedPrice = formatPrice(service.price, service.currency);
-    const buttonText = service.price > 0 ? `Pay ${formattedPrice} & Schedule` : 'Get Started';
-  
-    return `
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-  
-  <div class="fixed left-0 top-0 hidden h-full w-1/2 bg-white lg:block" aria-hidden="true"></div>
-  <div class="fixed right-0 top-0 hidden h-full w-1/2 bg-blue-800 lg:block" aria-hidden="true"></div>
-  
-  <div class="relative mx-auto grid max-w-7xl grid-cols-1 gap-x-16 lg:grid-cols-2 lg:px-8" style="font-family: 'Poppins', sans-serif;">
-    <h1 class="sr-only">Spotless Bin Co Checkout</h1>
-  
-    <!-- Summary -->
-    <section aria-labelledby="summary-heading" class="bg-blue-800 pb-12 pt-6 text-blue-200 md:px-10 lg:col-start-2 lg:mx-auto lg:w-full lg:max-w-lg lg:bg-transparent lg:px-0 lg:pb-24 lg:pt-0">
-      <div class="mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0">
-        <h2 id="summary-heading" class="text-xl font-bold text-white">Order Summary</h2>
-        <dl class="mt-4">
-          <dt class="text-sm font-medium text-blue-200">Amount due</dt>
-          <dd class="mt-1 text-3xl font-bold tracking-tight text-white">${formattedPrice}</dd>
-        </dl>
-        <ul role="list" class="divide-y divide-white divide-opacity-10 text-sm font-medium mt-6">
-          <li class="flex items-start space-x-4 py-6">
-            <img src="${imageUrl}" alt="Bin cleaning icon" class="h-20 w-20 flex-none rounded-md object-cover object-center border border-gray-200" />
-            <div class="flex-auto space-y-1">
-              <h3 class="text-white">${service.title}</h3>
-              <p>${service.description || 'One-time Residential Bin Cleaning'}</p>
-            </div>
-            <p class="flex-none text-base font-medium text-white">${formattedPrice}</p>
-          </li>
-        </ul>
-        <dl class="space-y-6 border-t border-white border-opacity-10 pt-6 text-sm font-medium">
-          <div class="flex items-center justify-between border-t border-white border-opacity-10 pt-6 text-white">
-            <dt class="text-base">Total</dt>
-            <dd class="text-base">${formattedPrice}</dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-  
-    <!-- Details -->
-    <section aria-labelledby="details-heading" class="py-16 lg:col-start-1 lg:mx-auto lg:w-full lg:max-w-lg lg:pb-24 lg:pt-0">
-      <h2 id="details-heading" class="sr-only">Payment and Service Details</h2>
-      <form id="payment-form">
-        <div class="mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0">
-          <!-- Contact Info -->
-          <h3 class="text-lg font-medium text-gray-900">Contact Information</h3>
-          <label for="email" class="block mt-4 text-sm font-medium text-gray-700">Email address</label>
-          <input type="email" id="email" name="email" autocomplete="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
-  
-          <!-- Payment -->
-          <h3 class="mt-10 text-lg font-medium text-gray-900">Payment Details</h3>
-          <div class="mt-4 text-sm text-gray-500">Enter your payment information below.</div>
-          <div class="mt-6" id="payment-element"></div>
-  
-          <!-- Service Address -->
-          <h3 class="mt-10 text-lg font-medium text-gray-900">Service Address</h3>
-          <div class="mt-1 text-sm text-gray-500">Where should we clean?</div>
-          <div class="grid grid-cols-1 gap-4 mt-2">
-            <div>
-              <label for="address1" class="block text-sm font-medium text-gray-700">Street Address</label>
-              <input type="text" id="address1" name="address1" autocomplete="address-line1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="city" class="block text-sm font-medium text-gray-700">City</label>
-                <input type="text" id="city" name="city" autocomplete="address-level2" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
-              </div>
-              <div>
-                <label for="state" class="block text-sm font-medium text-gray-700">State</label>
-                <input type="text" id="state" name="state" autocomplete="address-level1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
-              </div>
-            </div>
-            <div>
-              <label for="zip5" class="block text-sm font-medium text-gray-700">ZIP Code</label>
-              <input type="text" id="zip5" name="zip5" autocomplete="postal-code" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
-            </div>
-          </div>
-          <button type="button" id="check-availability" class="mt-4 px-4 py-2 rounded-md bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Check Availability</button>
-          <div id="address-feedback" class="mt-2 text-sm"></div>
-  
-          <!-- Billing same as service -->
-          <div class="mt-10 flex items-center">
-            <input id="same-as-shipping" name="same-as-shipping" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-            <label for="same-as-shipping" class="ml-2 text-sm font-medium text-gray-900">Service & Billing address same</label>
-          </div>
-  
-          <!-- Coupon -->
-          <div class="mt-10">
-            <label for="coupon" class="block text-sm font-medium text-gray-700">Coupon Code</label>
-            <div class="mt-1 flex">
-              <input type="text" id="coupon" name="coupon" placeholder="BINBUCKS5" class="block w-full rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
-              <button type="button" class="rounded-r-md border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Apply</button>
-            </div>
-          </div>
-  
-          <!-- Submit -->
-          <div class="mt-10 flex justify-end border-t border-gray-200 pt-6">
-            <button type="submit" id="submit-button" class="rounded-md bg-green-500 px-6 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50" disabled>${buttonText}</button>
-          </div>
-          <div id="error-message" class="mt-4 text-sm text-red-600 text-right"></div>
-        </div>
-      </form>
-    </section>
-  </div>
-  <script>
-    (function() {
-      const addressInput = document.getElementById('address1');
-      const cityInput = document.getElementById('city');
-      const stateInput = document.getElementById('state');
-      const zipInput = document.getElementById('zip5');
-      const checkBtn = document.getElementById('check-availability');
-      const feedbackDiv = document.getElementById('address-feedback');
-      const submitBtn = document.getElementById('submit-button');
-
-      function setFeedback(msg, color) {
-        feedbackDiv.textContent = msg;
-        feedbackDiv.style.color = color;
-      }
-
-      function setSubmitEnabled(enabled) {
-        if (enabled) {
-          submitBtn.removeAttribute('disabled');
-          submitBtn.classList.remove('opacity-50');
-        } else {
-          submitBtn.setAttribute('disabled', 'disabled');
-          submitBtn.classList.add('opacity-50');
-        }
-      }
-
-      setSubmitEnabled(false);
-
-      checkBtn.addEventListener('click', async function() {
-        const address = addressInput.value.trim();
-        setFeedback('⏳ Checking...', '#2563eb');
-        setSubmitEnabled(false);
-
-        if (!address) {
-          setFeedback('Please enter an address.', '#b91c1c');
-          return;
-        }
-
-        try {
-          const resp = await fetch('/api/check-availability', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              street: addressInput.value.trim(),
-              city: cityInput.value.trim(),
-              state: stateInput.value.trim(),
-              zip: zipInput.value.trim()
-            })
-          });
-          if (!resp.ok) {
-            throw new Error('API error');
-          }
-          const data = await resp.json();
-          if (data.in_service_area) {
-            setFeedback('✅ Address is in service area.', '#16a34a');
-            setSubmitEnabled(true);
-          } else {
-            setFeedback('❌ Address is outside the service area.', '#b91c1c');
-            setSubmitEnabled(false);
-          }
-        } catch (e) {
-          setFeedback('⚠️ Could not verify address. Please check and try again.', '#b91c1c');
-          setSubmitEnabled(false);
-        }
-      });
-
-      addressInput.addEventListener('input', function() {
-        setFeedback('', '');
-        setSubmitEnabled(false);
-      });
-    })();
-  </script>
-  `;
-  };
-  
+});

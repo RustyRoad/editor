@@ -1,0 +1,1 @@
+export const source = `<button class="personalization-token bg-blue-500 text-white px-4 py-2 rounded" data-token="cta">{{ ctx.call_to_action | default(value="Get Started") }}</button>`;

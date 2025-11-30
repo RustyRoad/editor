@@ -85,22 +85,77 @@
     </style>
     <script src="/index.js"></script>
    <script type="text/javascript">
-    const escapeName = (name) => `${name}`.trim().replace(/([^a-z0-9\w-:/]+)/gi, '-');
+    const escapeName = (name) => `${name}`.trim().replace(/([^a-z0-9\\w-:/]+)/gi, '-');
 
     window.editor = grapesjs.init({
         height: '100%',
+        // width: '100%', // width is typically controlled by the container style
         container: '#gjs',
+        
         showOffsets: true,
+        allowScripts: 1, 
         fromElement: true,
         noticeOnUnload: false,
-        storageManager: false,
+        storageManager: false, 
         selectorManager: { escapeName },
-        plugins: ['@rustyroad/editor'],
-        pluginsOpts: {
-            '@rustyroad/editor': {
-                // options
+        plugins: [
+            '@rustyroad/editor', // Ensure this is loaded once and correctly
+            'grapesjs-preset-webpage',
+            'grapesjs-script-editor',
+            'grapesjs-component-code-editor',
+            // 'grapesjs-parser-postcss', // Removed as it was causing "Plugin not found"
+            '@evolvingriley/grapesjs-openai',
+            () => {
+                import('/static/js/location-service-standalone.bundle.js') // Load for globals/side-effects
+                    .then((mod) => {
+                        const init = (mod && (mod.initLocationService || (mod.default && mod.default.initLocationService)))
+                          || (window.location_service && window.location_service.initLocationService);
+                        if (typeof init === 'function') {
+                            window.initLocationService = init;
+                        } else {
+                            console.info('Location component loaded; global API will be used if present.');
+                        }
+                    })
+                    .catch(err => console.error('Error loading location component:', err));
             }
-        }
+        ],
+        pluginsOpts: {
+            '@rustyroad/editor': { /* your options for rustyroad/editor */ },
+            'grapesjs-preset-webpage': { /* your options for preset-webpage */ },
+            'grapesjs-script-editor': { /* your options for script-editor */ },
+            'grapesjs-component-code-editor': { /* your options for component-code-editor */ },
+            '@evolvingriley/grapesjs-openai': {
+                apiKey: 'YOUR_API_KEY_HERE' // As seen in logs
+            }
+        },
+        panels: { // From runtime logs, seems to be the intended panel setup
+            defaults: [
+                {
+                    buttons: [
+                        {
+                            attributes: { title: 'Open Code' },
+                            className: 'fa fa-code',
+                            command: 'open-code',
+                            id: 'open-code'
+                        },
+                    ],
+                    id: 'views'
+                }
+            ]
+        },
+        canvas: {
+            styles: [
+                '/static/css/styles.css',
+                'https://unpkg.com/tailwindcss@^3/dist/tailwind.min.css'
+            ],
+            scripts: [
+                '/static/js/funnel-client.js',
+                '/static/js/location-service/dist/index.js',
+                '/static/js/tracker.js',
+                '/static/js/service-modal.js',
+                '/static/js/pricing-table.js'
+            ]
+        },
     });
 
     editor.Panels.addButton('options', {

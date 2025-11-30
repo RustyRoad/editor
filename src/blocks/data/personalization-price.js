@@ -1,0 +1,1 @@
+export const source = `<div class="personalization-token text-2xl font-bold text-green-600" data-token="price">{{ ctx.tripwire_price | default(value=29.00) }}</div>`;

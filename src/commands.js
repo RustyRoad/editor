@@ -1,6 +1,5 @@
 //import purify from './purifycss'
-
-const themeList = [
+var themeList = [
     { name: 'slate', color: '#64748b' },
     { name: 'gray', color: '#6b7280' },
     { name: 'zinc', color: '#71717a' },
@@ -23,85 +22,72 @@ const themeList = [
     { name: 'fuchsia', color: '#d946ef' },
     { name: 'pink', color: '#ec4899' },
     { name: 'rose', color: '#f43f5e' },
-]
-
-const colorRegex = new RegExp(
-    /(bg|text|border|ring)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emarald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(\d\d\d)/,
-    "g"
-);
-
-const getUpdateThemeModal = (editor) => {
-    const md = editor.Modal
-    const pfx = editor.getConfig().stylePrefix
-
-    const container = document.createElement('div')
-
-    const containerBody = document.createElement('div')
-    containerBody.style.padding = '40px 0px'
-    containerBody.style.display = 'flex'
-    containerBody.style.justifyContent = 'center'
-    containerBody.style.flexWrap = 'wrap'
-
-    let selectedTheme
-    themeList.forEach((theme) => {
-        const btnColor = document.createElement('button')
-        btnColor.className = 'change-theme-button'
-        btnColor.style.backgroundColor = theme.color
-        btnColor.onclick = () => (selectedTheme = theme)
-
-        containerBody.appendChild(btnColor)
-    })
-
-    const containerFooter = document.createElement('div')
-
-    const btnEdit = document.createElement('button')
-    btnEdit.innerHTML = 'Update'
-    btnEdit.className = pfx + 'btn-prim ' + pfx + 'btn-import'
-    btnEdit.style.float = 'right'
-    btnEdit.onclick = () => {
-        updateThemeColor(editor, selectedTheme.name)
-        md.close()
-    }
-
+];
+var colorRegex = new RegExp(/(bg|text|border|ring)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emarald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(\d\d\d)/, "g");
+var getUpdateThemeModal = function (editor) {
+    var md = editor.Modal;
+    var pfx = editor.getConfig().stylePrefix;
+    var container = document.createElement('div');
+    var containerBody = document.createElement('div');
+    containerBody.style.padding = '40px 0px';
+    containerBody.style.display = 'flex';
+    containerBody.style.justifyContent = 'center';
+    containerBody.style.flexWrap = 'wrap';
+    var selectedTheme;
+    themeList.forEach(function (theme) {
+        var btnColor = document.createElement('button');
+        btnColor.className = 'change-theme-button';
+        btnColor.style.backgroundColor = theme.color;
+        btnColor.onclick = function () { return (selectedTheme = theme); };
+        containerBody.appendChild(btnColor);
+    });
+    var containerFooter = document.createElement('div');
+    var btnEdit = document.createElement('button');
+    btnEdit.innerHTML = 'Update';
+    btnEdit.className = pfx + 'btn-prim ' + pfx + 'btn-import';
+    btnEdit.style.float = 'right';
+    btnEdit.onclick = function () {
+        updateThemeColor(editor, selectedTheme.name);
+        md.close();
+    };
     // box-shadow: 0 0 0 2pt #c5c5c575
-    containerFooter.appendChild(btnEdit)
-
-    container.appendChild(containerBody)
-    container.appendChild(containerFooter)
-    return container
-}
-
-const getAllComponents = (model, result = []) => {
-    result.push(model)
-    model.components().each((mod) => getAllComponents(mod, result))
-    return result
-}
-
-const updateThemeColor = (editor, color) => {
-    const wrapper = editor.DomComponents.getWrapper()
-    const componentsAll = getAllComponents(wrapper, [])
-    componentsAll.forEach((c) => {
-        const cl = c.getAttributes().class;
+    containerFooter.appendChild(btnEdit);
+    container.appendChild(containerBody);
+    container.appendChild(containerFooter);
+    return container;
+};
+var getAllComponents = function (model, result) {
+    if (result === void 0) { result = []; }
+    result.push(model);
+    model.components().each(function (mod) { return getAllComponents(mod, result); });
+    return result;
+};
+var updateThemeColor = function (editor, color) {
+    var wrapper = editor.DomComponents.getWrapper();
+    var componentsAll = getAllComponents(wrapper, []);
+    componentsAll.forEach(function (c) {
+        var cl = c.getAttributes().class;
         if (typeof cl === "string" && cl.match(colorRegex)) {
-            c.setClass(cl.replace(colorRegex, `$1-${color}-$3`));
+            c.setClass(cl.replace(colorRegex, "$1-".concat(color, "-$3")));
         }
-    })
-}
-
-export default (editor, opts = {}) => {
-    const cm = editor.Commands;
-
+    });
+};
+// Replace the anonymous default export with a named export
+export function registerEditorCommands(editor, opts) {
+    if (opts === void 0) { opts = {}; }
+    var cm = editor.Commands;
     cm.add('open-update-theme', {
-        run(_, sender) {
-            sender?.set && sender.set('active', 0)
-            const md = editor.Modal
-            md.setTitle(opts.changeThemeText)
-            const container = getUpdateThemeModal(editor)
-            md.setContent(container)
-            md.open()
+        run: function (editorParam, sender) {
+            // prefer the passed editor if provided, otherwise use the outer-scoped editor
+            var ed = editorParam || editor;
+            (sender === null || sender === void 0 ? void 0 : sender.set) && sender.set('active', 0);
+            var md = ed.Modal;
+            md.setTitle(opts.changeThemeText || 'Change theme');
+            var container = getUpdateThemeModal(ed);
+            md.setContent(container);
+            md.open();
         },
-    })
-
+    });
     //cm.add('get-tailwindCss', {
     //    run(editor, sender, options = {}) {
     //        sender?.set && sender.set('active', 0)
@@ -122,35 +108,37 @@ export default (editor, opts = {}) => {
     //        }
     //    }
     //})
-
     cm.add('get-tailwindCss', {
-        run(editor, sender, options = {}) {
+        run: function (editorParam, sender, options) {
+            if (options === void 0) { options = {}; }
+            var ed = editorParam || editor;
             try {
-                sender?.set && sender.set('active', 0);
-            } catch (e) {
+                (sender === null || sender === void 0 ? void 0 : sender.set) && sender.set('active', 0);
+            }
+            catch (e) {
                 console.error("Error setting sender active state:", e);
             }
-            const {
-                callback = twcss => console.log(twcss)
-            } = options
-            let twcss = opts.cover;
-            const doc = editor.Canvas.getDocument();
-
-            if (!doc) return;
-
-            doc.head.querySelectorAll('style').forEach(el => {
+            var _a = options.callback, callback = _a === void 0 ? function (twcss) { return console.log(twcss); } : _a;
+            var twcss = opts.cover || '';
+            var doc = ed.Canvas.getDocument();
+            if (!doc)
+                return;
+            doc.head.querySelectorAll('style').forEach(function (el) {
                 el.innerText.includes('tailwind') && (twcss += el.innerText);
             });
             callback(twcss);
         }
     });
-
     cm.add('export-html-to-console', {
-        run(editor) {
-            const html = editor.getHtml();
+        run: function (editorParam) {
+            var ed = editorParam || editor;
+            var html = ed.getHtml();
             console.log('--- Editor HTML ---');
             console.log(html);
             console.log('-------------------');
         }
     });
 }
+// Export the named function as the default only if you want a single default export.
+// If another module already provides a default, avoid adding the next line.
+// export default registerEditorCommands;

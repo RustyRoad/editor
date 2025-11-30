@@ -1,0 +1,1 @@
+export const source = `<div class="personalization-token" data-token="title">{{ ctx.title | default(value="Welcome!") }}</div>`;
