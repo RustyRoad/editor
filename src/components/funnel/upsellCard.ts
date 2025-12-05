@@ -178,6 +178,13 @@ export function addUpsellCardComponent(editor: Editor): void {
                       },
                       {
                         tagName: 'div',
+                        attributes: { class: 'text-sm text-gray-600' },
+                        components: [
+                          { tagName: 'span', attributes: { 'data-offer-field': 'bin-selector-preview' }, content: '' }
+                        ]
+                      },
+                      {
+                        tagName: 'div',
                         attributes: { class: 'bg-white rounded p-4 text-left text-sm space-y-2' },
                         components: [
                           { type: 'text', content: '<p><strong>💡 This component renders server-side with:</strong></p>' },
@@ -279,6 +286,20 @@ export function addUpsellCardComponent(editor: Editor): void {
             label: 'Decline Button Text',
             name: 'secondaryButtonText',
             changeProp: true
+          },
+          {
+            type: 'checkbox',
+            label: 'Show Bin Selector',
+            name: 'showBinSelector',
+            changeProp: true
+          },
+          {
+            type: 'number',
+            label: 'Default Bins',
+            name: 'defaultBins',
+            min: 1,
+            max: 10,
+            changeProp: true
           }
         ] as Trait[],
         theme: 'urgency',
@@ -290,7 +311,9 @@ export function addUpsellCardComponent(editor: Editor): void {
         savingsText: 'You save!',
         includedTitle: "What's included:",
         primaryButtonText: 'Yes, Add This Deal!',
-        secondaryButtonText: 'No Thanks, Continue'
+        secondaryButtonText: 'No Thanks, Continue',
+        showBinSelector: false,
+        defaultBins: 1
       },
 
       init(this: Component) {
@@ -353,7 +376,7 @@ export function addUpsellCardComponent(editor: Editor): void {
       setupChangeListeners(this: Component) {
         const editableFields = [
           'theme', 'badgeText', 'headline', 'subheading', 'originalPrice', 'savingsText',
-          'includedTitle', 'primaryButtonText', 'secondaryButtonText'
+          'includedTitle', 'primaryButtonText', 'secondaryButtonText', 'showBinSelector', 'defaultBins'
         ];
 
         editableFields.forEach(field => {
@@ -502,6 +525,20 @@ export function addUpsellCardComponent(editor: Editor): void {
         // Stored as prop, applied server-side
       },
 
+      updateShowBinSelector(this: Component) {
+        const show = (this as any).get('showBinSelector');
+        const domUpdater = (this as any).__domUpdater as DOMUpdater;
+        if (show) {
+          domUpdater.updateNode('[data-offer-field="bin-selector-preview"]', '✅ Bin Selector Enabled');
+        } else {
+          domUpdater.updateNode('[data-offer-field="bin-selector-preview"]', '');
+        }
+      },
+
+      updateDefaultBins(this: Component) {
+        // Stored as prop, applied server-side
+      },
+
       // Offer-driven updates
       applyOfferSelection(this: Component) {
         const token = ((this as any).get('offerToken') || '').toString();
@@ -587,6 +624,8 @@ export function addUpsellCardComponent(editor: Editor): void {
         const token = attrs['data-offer-token'] || '';
         const offerType = attrs['data-offer-type'] || 'standard';
         const theme = (this as any).get('theme') || 'urgency';
+        const showBinSelector = (this as any).get('showBinSelector') ? 'true' : 'false';
+        const defaultBins = (this as any).get('defaultBins') || '1';
         
         // Extract custom content from the editable area
         let customContent = '';
@@ -608,7 +647,7 @@ export function addUpsellCardComponent(editor: Editor): void {
         
         // Return placeholder with custom content inside
         // Backend will read data-theme and custom content
-        return `<div class="upsell-card-container" data-offer-token="${token}" data-offer-type="${offerType}" data-theme="${theme}">${customContent}</div>`;
+        return `<div class="upsell-card-container" data-offer-token="${token}" data-offer-type="${offerType}" data-theme="${theme}" data-show-bin-selector="${showBinSelector}" data-default-bins="${defaultBins}">${customContent}</div>`;
       }
     }
   });

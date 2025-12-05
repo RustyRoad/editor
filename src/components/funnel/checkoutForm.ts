@@ -60,6 +60,33 @@ export function addCheckoutFormComponent(editor: Editor): void {
               class: 'gjs-funnel-email hidden w-full mb-3 px-3 py-3 sm:px-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base sm:text-sm'
             }
           },
+          // Optional bin selector (can be toggled via trait)
+          {
+            tagName: 'div',
+            attributes: {
+              class: 'gjs-funnel-bins hidden w-full mb-3'
+            },
+            components: [
+              {
+                tagName: 'label',
+                content: 'Number of Bins',
+                attributes: { class: 'block text-sm font-medium text-gray-700 mb-1' }
+              },
+              {
+                tagName: 'select',
+                attributes: {
+                  name: 'number_of_bins',
+                  class: 'w-full px-3 py-3 sm:px-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base sm:text-sm'
+                },
+                components: [
+                  { tagName: 'option', attributes: { value: '1' }, content: '1 Bin' },
+                  { tagName: 'option', attributes: { value: '2' }, content: '2 Bins' },
+                  { tagName: 'option', attributes: { value: '3' }, content: '3 Bins' },
+                  { tagName: 'option', attributes: { value: '4' }, content: '4 Bins' }
+                ]
+              }
+            ]
+          },
           {
             tagName: 'button',
             attributes: {
@@ -116,6 +143,20 @@ export function addCheckoutFormComponent(editor: Editor): void {
             label: 'Show Email Field',
             name: 'showEmail',
             changeProp: true
+          },
+          {
+            type: 'checkbox',
+            label: 'Show Bin Selector',
+            name: 'showBinSelector',
+            changeProp: true
+          },
+          {
+            type: 'number',
+            label: 'Default Bins',
+            name: 'defaultBins',
+            min: 1,
+            max: 10,
+            changeProp: true
           }
         ] as Trait[],
         offerType: 'tripwire',
@@ -123,12 +164,14 @@ export function addCheckoutFormComponent(editor: Editor): void {
         serviceId: '1',
         sessionToken: '',
         flowMode: FLOW_MODES.VALIDATE_THEN_CHECKOUT,
-        showEmail: false
+        showEmail: false,
+        showBinSelector: false,
+        defaultBins: 1
       },
 
       init() {
         const update = () => this.updateComponents();
-        this.listenTo(this, 'change:offerType change:buttonText change:serviceId change:sessionToken change:showEmail', update);
+        this.listenTo(this, 'change:offerType change:buttonText change:serviceId change:sessionToken change:showEmail change:showBinSelector change:defaultBins', update);
         setTimeout(update, 0);
       },
 
@@ -139,6 +182,8 @@ export function addCheckoutFormComponent(editor: Editor): void {
         const serviceId = (this as any).get('serviceId');
         const sessionToken = (this as any).get('sessionToken');
         const showEmail = !!(this as any).get('showEmail');
+        const showBinSelector = !!(this as any).get('showBinSelector');
+        const defaultBins = (this as any).get('defaultBins');
 
         (this as any).components().each((component: Component) => {
           const attrs = (component as any).getAttributes?.() || {};
@@ -153,6 +198,28 @@ export function addCheckoutFormComponent(editor: Editor): void {
             const currentClass = attrs.class || '';
             if (showEmail) {
               (component as any).addAttributes({ class: currentClass.replace('hidden', '').trim() });
+            } else {
+              (component as any).addAttributes({ class: `${currentClass} hidden`.trim() });
+            }
+          } else if (attrs.class && attrs.class.includes('gjs-funnel-bins')) {
+            const currentClass = attrs.class || '';
+            if (showBinSelector) {
+              (component as any).addAttributes({ class: currentClass.replace('hidden', '').trim() });
+              // Update default value of the select inside
+              const select = (component as any).find('select')[0];
+              if (select) {
+                select.addAttributes({ value: defaultBins });
+                // Also update the selected option
+                const options = select.components();
+                options.each((opt: Component) => {
+                  const optAttrs = (opt as any).getAttributes();
+                  if (optAttrs.value == defaultBins) {
+                    (opt as any).addAttributes({ selected: 'selected' });
+                  } else {
+                    (opt as any).removeAttributes('selected');
+                  }
+                });
+              }
             } else {
               (component as any).addAttributes({ class: `${currentClass} hidden`.trim() });
             }
