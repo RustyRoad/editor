@@ -8,6 +8,38 @@ import { ServiceData } from './modal-ui';
 export default (editor: Editor) => {
   const domc = editor.DomComponents;
 
+  // Simple message block types used by pricing-table when data is missing or fetch fails.
+  // Without these, GrapesJS logs: "Component type 'error-message' not found".
+  if (!domc.getType('error-message')) {
+    domc.addType('error-message', {
+      isComponent: (el: any) => el.getAttribute && el.getAttribute('data-gjs-type') === 'error-message',
+      model: {
+        defaults: {
+          tagName: 'div',
+          attributes: { 'data-gjs-type': 'error-message' },
+          droppable: false,
+          editable: true,
+          stylable: true,
+        },
+      },
+    });
+  }
+
+  if (!domc.getType('info-message')) {
+    domc.addType('info-message', {
+      isComponent: (el: any) => el.getAttribute && el.getAttribute('data-gjs-type') === 'info-message',
+      model: {
+        defaults: {
+          tagName: 'div',
+          attributes: { 'data-gjs-type': 'info-message' },
+          droppable: false,
+          editable: true,
+          stylable: true,
+        },
+      },
+    });
+  }
+
   // Define the nested pricing card component type
 
   // Initialize the new small pricing card component type

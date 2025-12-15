@@ -139,15 +139,15 @@ export function generateAddressFormHTML(serviceData: ServiceData) {
         <input type="email" id="email" name="email" required autocomplete="email" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
       </div>
       <div>
-        <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
-        <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="+1 (555) 123-4567" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional - for service reminders and updates</p>
+        <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number <span class="text-red-500">*</span></label>
+        <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="+1 (555) 123-4567" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Required for service reminders and updates</p>
       </div>
-      <div id="sms-consent-container" class="hidden mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+      <div id="sms-consent-container" class="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
         <div class="flex items-start">
-          <input type="checkbox" id="sms_consent" name="sms_consent" class="h-4 w-4 mt-0.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+          <input type="checkbox" id="sms_consent" name="sms_consent" required class="h-4 w-4 mt-0.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
           <label for="sms_consent" class="ml-2 block text-xs text-gray-700 dark:text-gray-300">
-            I agree to receive <strong>recurring</strong> service updates &amp; reminders from Spotless Bin Co. via SMS. <strong>Message &amp; data rates may apply.</strong> Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help. See <a href="https://spotlessbinco.com/sms-terms" target="_blank" class="text-blue-600 hover:text-blue-700 underline">Mobile Terms</a> and <a href="https://spotlessbinco.com/privacy" target="_blank" class="text-blue-600 hover:text-blue-700 underline">Privacy Policy</a>. Consent not required for purchase.
+            <span class="text-red-500">*</span> I agree to receive <strong>recurring</strong> service updates &amp; reminders from Spotless Bin Co. via SMS. <strong>Message &amp; data rates may apply.</strong> Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help. See <a href="https://spotlessbinco.com/sms-terms" target="_blank" class="text-blue-600 hover:text-blue-700 underline">Mobile Terms</a> and <a href="https://spotlessbinco.com/privacy" target="_blank" class="text-blue-600 hover:text-blue-700 underline">Privacy Policy</a>.
           </label>
         </div>
       </div>
@@ -200,24 +200,10 @@ export function generateAddressFormHTML(serviceData: ServiceData) {
         }
       }
 
-      // SMS Consent Logic: Show checkbox when phone number is entered
+      // SMS Consent Logic: SMS consent is now mandatory - no conditional show/hide
       const phoneInput = hostElement ? hostElement.querySelector('#phone') : null;
       const smsConsentContainer = hostElement ? hostElement.querySelector('#sms-consent-container') : null;
       const smsConsentCheckbox = hostElement ? hostElement.querySelector('#sms_consent') : null;
-
-      if (phoneInput && smsConsentContainer) {
-        phoneInput.addEventListener('input', function() {
-          const phoneValue = phoneInput.value.trim();
-          if (phoneValue.length > 0) {
-            smsConsentContainer.classList.remove('hidden');
-          } else {
-            smsConsentContainer.classList.add('hidden');
-            if (smsConsentCheckbox) {
-              smsConsentCheckbox.checked = false;
-            }
-          }
-        });
-      }
 
       // Ensure form submits as standard HTML form for TikTok browser compatibility
       // This makes sure the form submission works even if JavaScript is restricted
@@ -241,18 +227,17 @@ export function generateAddressFormHTML(serviceData: ServiceData) {
             }
           });
           
-          // SMS Consent validation: If phone is provided, SMS consent must be checked
-          const phoneValue = phoneInput ? phoneInput.value.trim() : '';
+          // SMS Consent validation: SMS consent must be checked
           const smsConsented = smsConsentCheckbox ? smsConsentCheckbox.checked : false;
           
-          if (phoneValue.length > 0 && !smsConsented) {
+          if (!smsConsented) {
             hasEmptyRequired = true;
             if (smsConsentContainer) {
               smsConsentContainer.style.borderColor = '#ef4444';
             }
             const feedback = hostElement.querySelector('#address-feedback');
             if (feedback) {
-              feedback.textContent = 'Please check the SMS consent checkbox to receive service updates via text message.';
+              feedback.textContent = 'Please agree to receive SMS service updates to continue.';
               feedback.className = 'mt-3 text-sm font-medium text-red-600';
             }
             event.preventDefault();

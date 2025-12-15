@@ -32,6 +32,23 @@ export default (editor: any, opts: any = {}) => {
     return headers;
   }
 
+  /**
+   * Back-compat helper: older prompts may return JSON like {"html_content":"<div>..."}.
+   * Newer prompts should return raw HTML.
+   */
+  function tryExtractHtmlFromJsonString(maybeJson: string): string | null {
+    const trimmed = (maybeJson || '').trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return null;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed?.html_content === 'string') return parsed.html_content;
+      if (typeof parsed?.data?.html_content === 'string') return parsed.data.html_content;
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
   // --- Initial Check ---
   // With local proxy, we don't require a client-side API key; backend reads it from session
   if (!apiKey) {
@@ -94,27 +111,58 @@ export default (editor: any, opts: any = {}) => {
   function constructHtmlPromptBasedOnUserInput() {
     const modalContainer = document.getElementById('html-prompt-creation-modal');
     const currentMode = modalContainer ? modalContainer.getAttribute('data-input-mode') : 'plain';
-    let prompt: any = {};
-
     if (currentMode === 'plain') {
-      prompt = {
-        description: (document.getElementById('html-plain-description') as HTMLTextAreaElement)?.value.trim() || 'A simple hero section.',
-        stylingPreference: 'Tailwind CSS',
-        instructions: "Generate HTML based on the description. Respond ONLY with JSON containing the HTML under 'html_content'."
-      };
-    } else {
-      prompt = {
-        goal: (document.getElementById('html-page-goal') as HTMLInputElement)?.value || 'Not specified',
-        targetAudience: (document.getElementById('html-target-audience') as HTMLInputElement)?.value || 'Not specified',
-        keyMessage: (document.getElementById('html-key-message') as HTMLTextAreaElement)?.value || 'Not specified',
-        desiredElements: (document.getElementById('html-desired-elements') as HTMLTextAreaElement)?.value || 'Not specified',
-        primaryCTA: (document.getElementById('html-cta') as HTMLInputElement)?.value || null,
-        toneStyle: (document.getElementById('html-tone-style') as HTMLInputElement)?.value || 'Default',
-        stylingPreference: 'Tailwind CSS',
-        instructions: "Generate HTML based on these specifications. Respond ONLY with JSON containing the HTML under 'html_content'."
-      };
+      const description = (document.getElementById('html-plain-description') as HTMLTextAreaElement)?.value.trim() || 'A simple hero section.';
+      return [
+        'Generate a single self-contained HTML fragment for a marketing page section.',
+        'Requirements:',
+        '- Use ONLY Tailwind CSS utility classes (mobile-first).',
+        '- Default can be LIGHT mode, but MUST support dark mode via `dark:` variants (dark-mode friendly).',
+        '- No external CSS, no <style> tags, no <script> tags, no inline onclick handlers.',
+        '- Output ONLY HTML (no markdown fences, no commentary, no JSON).',
+        '- Output a fragment only (no <html>, <head>, <body>).',
+        '- Use semantic markup and accessible buttons/links (e.g., <button type="button">).',
+        '',
+        'Style guide (match our modern landing page aesthetic):',
+        '- Clean, premium, modern layout; generous spacing; crisp typography.',
+        '- Use rounded-2xl cards, subtle borders/rings, and optional ambient gradient glows with blur.',
+        '- Use neutral slates for surfaces and an emerald/teal accent for CTAs and highlights.',
+        '- Ensure readable contrast in both light and dark modes (use `dark:` classes for bg/text/borders).',
+        '',
+        'Section description:',
+        description,
+      ].join('\n');
     }
-    return JSON.stringify(prompt, null, 2);
+
+    const goal = (document.getElementById('html-page-goal') as HTMLInputElement)?.value || 'Not specified';
+    const targetAudience = (document.getElementById('html-target-audience') as HTMLInputElement)?.value || 'Not specified';
+    const keyMessage = (document.getElementById('html-key-message') as HTMLTextAreaElement)?.value || 'Not specified';
+    const desiredElements = (document.getElementById('html-desired-elements') as HTMLTextAreaElement)?.value || 'Not specified';
+    const primaryCTA = (document.getElementById('html-cta') as HTMLInputElement)?.value || '';
+
+    return [
+      'Generate a single self-contained HTML fragment for a marketing page section.',
+      'Requirements:',
+      '- Use ONLY Tailwind CSS utility classes (mobile-first).',
+      '- Default can be LIGHT mode, but MUST support dark mode via `dark:` variants (dark-mode friendly).',
+      '- No external CSS, no <style> tags, no <script> tags, no inline onclick handlers.',
+      '- Output ONLY HTML (no markdown fences, no commentary, no JSON).',
+      '- Output a fragment only (no <html>, <head>, <body>).',
+      '- Use semantic markup and accessible buttons/links (e.g., <button type="button">).',
+      '',
+      'Style guide (match our modern landing page aesthetic):',
+      '- Clean, premium, modern layout; generous spacing; crisp typography.',
+      '- Use rounded-2xl cards, subtle borders/rings, and optional ambient gradient glows with blur.',
+      '- Use neutral slates for surfaces and an emerald/teal accent for CTAs and highlights.',
+      '- Ensure readable contrast in both light and dark modes (use `dark:` classes for bg/text/borders).',
+      '',
+      'Structured inputs:',
+      `- Goal: ${goal}`,
+      `- Target audience: ${targetAudience}`,
+      `- Key message: ${keyMessage}`,
+      `- Desired elements: ${desiredElements}`,
+      primaryCTA ? `- Primary CTA text: ${primaryCTA}` : '- Primary CTA text: (not specified)',
+    ].join('\n');
   }
 
   function constructDetailedPromptBasedOnUserInput() {
@@ -266,7 +314,7 @@ export default (editor: any, opts: any = {}) => {
         }
         
         // Set a good default - prefer Gemini Flash for speed
-        const preferredDefaults = ['gemini-2.5-flash', 'gemini-flash-latest', 'gpt-4o-mini'];
+        const preferredDefaults = ['gpt-5.2-2025-12-11', 'gpt-5.2', 'gemini-2.5-flash', 'gemini-flash-latest', 'gpt-4o-mini'];
         const defaultModel = preferredDefaults.find(m => toUse.includes(m));
         if (defaultModel) {
             select.value = defaultModel;
@@ -335,23 +383,369 @@ export default (editor: any, opts: any = {}) => {
     const selectedModel = (document.getElementById('html-model-select') as HTMLSelectElement)?.value;
     const component = editor.getSelected();
 
+    const wrapper = editor?.DomComponents?.getWrapper?.();
+    const isWrapperSelection = Boolean(component && wrapper && component === wrapper);
+
+    const safeReplaceComponentWithHtml = (cmp: any, html: string): boolean => {
+      try {
+        if (!cmp) {
+          editor.addComponents(html);
+          return true;
+        }
+
+        // If the user selected the wrapper / whole page, DO NOT remove it.
+        // Replace its children instead so editor-level traits/components remain intact.
+        if (isWrapperSelection || !cmp.parent || !cmp.parent()) {
+          cmp.components(html);
+          return true;
+        }
+
+        const parent = cmp.parent();
+        const index = cmp.index();
+        parent.components().add(html, { at: index });
+        cmp.remove();
+        return true;
+      } catch (e: any) {
+        editor.log('Failed to replace selected component safely', { level: 'error', ns: 'gjs-openai', error: e });
+        alert(`Could not apply enhancement safely: ${e?.message || e}`);
+        return false;
+      }
+    };
+
+    const getSelectedComponentHtml = (cmp: any): string => {
+      try {
+        if (!cmp) return '';
+        if (typeof cmp.toHTML === 'function') return cmp.toHTML();
+        const el = cmp?.view?.el as HTMLElement | undefined;
+        if (el && typeof el.outerHTML === 'string') return el.outerHTML;
+        // Fallback: some components expose attributes + content; better than nothing.
+        const content = cmp?.get && cmp.get('content');
+        return typeof content === 'string' ? content : '';
+      } catch {
+        return '';
+      }
+    };
+
+    const shouldEnhanceSelection = (prompt: string): boolean => {
+      const p = (prompt || '').toLowerCase();
+      return (
+        p.includes('enhance this') ||
+        p.includes('enhance the selected') ||
+        p.includes('enhance selected') ||
+        p.includes('improve this') ||
+        p.includes('polish this') ||
+        p.includes('make this better') ||
+        p.includes('refine this') ||
+        p.includes('upgrade this') ||
+        p.includes('redesign this')
+      );
+    };
+
+    type ProtectedDynamicTokens = {
+      protectedHtml: string;
+      tokenMap: Array<{ placeholder: string; original: string }>;
+      missingPlaceholders: (generatedHtml: string) => string[];
+      restore: (generatedHtml: string) => string;
+    };
+
+    const protectDynamicTokens = (html: string): ProtectedDynamicTokens => {
+      const seed = uid().replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+      const tokenMap: Array<{ placeholder: string; original: string }> = [];
+      const existing = new Map<string, string>();
+      const patterns: RegExp[] = [
+        /\{\{[\s\S]*?\}\}/g, // Tera variable tags
+        /\{%[\s\S]*?%\}/g,   // Tera statements
+        /\{#[\s\S]*?#\}/g,   // Tera comments
+        /__[^_\s][A-Z0-9_]*__/g, // placeholder tokens like __SERVICE_NAME__
+      ];
+
+      let protectedHtml = html;
+      let idx = 0;
+
+      const makePlaceholder = () => `[[SBC_DYN_${seed}_${idx++}]]`;
+
+      for (const re of patterns) {
+        protectedHtml = protectedHtml.replace(re, (match) => {
+          const prev = existing.get(match);
+          if (prev) return prev;
+          const placeholder = makePlaceholder();
+          existing.set(match, placeholder);
+          tokenMap.push({ placeholder, original: match });
+          return placeholder;
+        });
+      }
+
+      const missingPlaceholders = (generatedHtml: string): string[] => {
+        const g = generatedHtml || '';
+        return tokenMap
+          .map(t => t.placeholder)
+          .filter(ph => !g.includes(ph));
+      };
+
+      const restore = (generatedHtml: string): string => {
+        let restored = generatedHtml || '';
+        for (const t of tokenMap) {
+          // Replace all occurrences (split/join works without regex escaping issues)
+          restored = restored.split(t.placeholder).join(t.original);
+        }
+        return restored;
+      };
+
+      return { protectedHtml, tokenMap, missingPlaceholders, restore };
+    };
+
+    const protectCriticalGjsAttributeValues = (html: string): ProtectedDynamicTokens => {
+      const seed = uid().replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+      const tokenMap: Array<{ placeholder: string; original: string }> = [];
+      let idx = 0;
+
+      const makePlaceholder = () => `[[SBC_GJS_${seed}_${idx++}]]`;
+
+      // Preserve attribute VALUES for GrapesJS/component plumbing.
+      // We do NOT replace the attribute names, only their values.
+      const protectAttrValue = (input: string, attrNameRegex: RegExp) => {
+        return input.replace(attrNameRegex, (full, prefix, quote, value) => {
+          const placeholder = makePlaceholder();
+          tokenMap.push({ placeholder, original: value });
+          return `${prefix}${quote}${placeholder}${quote}`;
+        });
+      };
+
+      let protectedHtml = html;
+
+      // data-gjs-* captures custom component types and stored component state.
+      protectedHtml = protectAttrValue(
+        protectedHtml,
+        /((?:data-gjs-[a-z0-9_-]+)\s*=\s*)(["'])([^"']*)(\2)/gi,
+      );
+
+      // A few other common dynamic component attributes used in this repo.
+      protectedHtml = protectAttrValue(
+        protectedHtml,
+        /((?:data-component|data-checkout-id|data-service-name|data-service-price|data-service-type)\s*=\s*)(["'])([^"']*)(\2)/gi,
+      );
+
+      const missingPlaceholders = (generatedHtml: string): string[] => {
+        const g = generatedHtml || '';
+        return tokenMap
+          .map(t => t.placeholder)
+          .filter(ph => !g.includes(ph));
+      };
+
+      const restore = (generatedHtml: string): string => {
+        let restored = generatedHtml || '';
+        // Replace placeholders back to original attribute values.
+        for (const t of tokenMap) {
+          restored = restored.split(t.placeholder).join(t.original);
+        }
+        return restored;
+      };
+
+      return { protectedHtml, tokenMap, missingPlaceholders, restore };
+    };
+
+    const combineProtected = (...parts: Array<ProtectedDynamicTokens | null>): ProtectedDynamicTokens => {
+      const nonNull = parts.filter(Boolean) as ProtectedDynamicTokens[];
+      const protectedHtml = nonNull.reduce((acc, p) => p.protectedHtml, nonNull[0]?.protectedHtml || '');
+      const tokenMap = nonNull.flatMap(p => p.tokenMap);
+      const missingPlaceholders = (generatedHtml: string): string[] => {
+        return nonNull.flatMap(p => p.missingPlaceholders(generatedHtml));
+      };
+      const restore = (generatedHtml: string): string => {
+        return nonNull.reduce((acc, p) => p.restore(acc), generatedHtml);
+      };
+      return { protectedHtml, tokenMap, missingPlaceholders, restore };
+    };
+
+    const wantsEnhance = shouldEnhanceSelection(detailedPrompt);
+    const selectedHtmlRaw = wantsEnhance ? getSelectedComponentHtml(component) : '';
+    const selectedHtml = selectedHtmlRaw ? selectedHtmlRaw.trim() : '';
+
+    // Keep the prompt payload bounded; large selections can blow up model context.
+    const MAX_SELECTED_HTML_CHARS = 10_000;
+    const selectedHtmlClipped = selectedHtml.length > MAX_SELECTED_HTML_CHARS
+      ? `${selectedHtml.slice(0, MAX_SELECTED_HTML_CHARS)}\n\n<!-- NOTE: selection HTML truncated -->`
+      : selectedHtml;
+
+    const protectedTokens = wantsEnhance && selectedHtmlClipped
+      ? (() => {
+          // Protect template tokens first, then protect critical GrapesJS attribute values.
+          const dyn = protectDynamicTokens(selectedHtmlClipped);
+          const gjs = protectCriticalGjsAttributeValues(dyn.protectedHtml);
+          return combineProtected({ ...dyn, protectedHtml: gjs.protectedHtml }, gjs);
+        })()
+      : null;
+
+    if (wantsEnhance && !selectedHtmlClipped) {
+      alert('To “enhance this”, please select the element you want to enhance first.');
+      return;
+    }
+
     // System instructions reused across sync + streaming modes
-    const system = `You are a web development assistant for Spotless Bin Co. Generate a SINGLE version of HTML based on the user's specifications. Do NOT provide multiple variations. Use Tailwind CSS (mobile-first, dark mode ready). Respond ONLY with HTML fragments (no markdown, no commentary).`;
+    const system = [
+      'You are a web development assistant for Spotless Bin Co.',
+      'Generate a SINGLE HTML fragment based on the user\'s inputs. Do NOT provide multiple variations.',
+      'Hard rules:',
+      '- Output ONLY HTML (no markdown, no commentary, no JSON).',
+      '- Use ONLY Tailwind CSS utility classes (mobile-first).',
+      '- Default can be LIGHT mode, but MUST support dark mode using `dark:` variants.',
+      '- No external CSS, no <style> tags, no <script> tags, no inline onclick handlers.',
+      '- Output a fragment only (no <html>, <head>, <body>).',
+      'Design rules (match our modern landing page aesthetic):',
+      '- Neutral slate surfaces, emerald/teal accents for CTAs and highlights.',
+      '- Rounded cards, subtle borders/rings, optional ambient gradient glows with blur.',
+      '- Clean, premium typography and spacing; accessible contrast in light and dark.',
+      wantsEnhance
+        ? 'IMPORTANT: The user asked to enhance an existing selected element. You MUST return the improved replacement HTML for that element (single root element).'
+        : '',
+      wantsEnhance
+        ? [
+            'IMPORTANT (dynamic values):',
+            '- The selected element may contain server-side template tokens / dynamic placeholders.',
+            '- You MUST preserve ALL placeholders exactly as provided (do not remove or modify them).',
+            '- Placeholders look like [[SBC_DYN_*]] and [[SBC_GJS_*]] and represent required dynamic values / component wiring.',
+            '- DO NOT remove or rename ANY `data-gjs-*` attributes. They power components and traits in the editor.',
+            '- Preserve existing `data-*` attributes and `id` values unless the user explicitly asks to remove them.',
+            isWrapperSelection
+              ? '- The user selected the whole page. You MUST preserve all existing `data-gjs-*` components and dynamic placeholders within the page.'
+              : '',
+          ].join('\n')
+        : '',
+    ].join('\n');
+
+    const promptWithSelection = [
+      detailedPrompt,
+      wantsEnhance && selectedHtmlClipped
+        ? [
+            'Selected element to enhance (current HTML):',
+            protectedTokens?.protectedHtml || selectedHtmlClipped,
+            '',
+            'Task: Enhance THIS element. Keep intent/meaning, improve layout/typography/spacing, and ensure dark mode support with `dark:` Tailwind classes.',
+            'Return ONLY the replacement HTML for this element (single root element).',
+          ].join('\n')
+        : '',
+    ].filter(Boolean).join('\n\n');
+
+    const btnEl = generateBtn as HTMLButtonElement | null;
+    const originalBtnText = btnEl?.textContent || 'Generate HTML';
+
+    const setBusy = (busy: boolean) => {
+      if (spinner) (spinner as HTMLElement).style.display = busy ? 'inline-flex' : 'none';
+      if (btnEl) {
+        btnEl.disabled = busy;
+        btnEl.textContent = busy ? 'Generating…' : originalBtnText;
+        btnEl.classList.toggle('is-loading', busy);
+        btnEl.setAttribute('aria-busy', busy ? 'true' : 'false');
+      }
+    };
+
+    const ensureOverlay = () => {
+      // Reuse the same id as the streaming loader so we never double-render.
+      if (document.getElementById('ai-streaming-loader')) return;
+      editor.addComponents(`
+        <div id="ai-streaming-loader" style="
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(0,0,0,0.82);
+          color: white;
+          padding: 18px 20px;
+          border-radius: 12px;
+          z-index: 9999;
+          text-align: center;
+          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+          min-width: 320px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        ">
+          <div style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">Generating HTML…</div>
+          <div style="font-size: 13px; opacity: 0.85;" id="ai-loading-text">Working…</div>
+          <div style="margin-top: 12px;">
+            <div style="width: 260px; height: 6px; background: rgba(255,255,255,0.15); border-radius: 999px; overflow: hidden;">
+              <div id="ai-progress-bar" style="width: 12%; height: 100%; background: #10B981; transition: width 0.35s ease;"></div>
+            </div>
+          </div>
+        </div>
+      `);
+    };
+
+    const updateOverlay = (content: string) => {
+      const loadingText = document.getElementById('ai-loading-text');
+      const progressBar = document.getElementById('ai-progress-bar') as HTMLElement | null;
+      if (loadingText) {
+        const wordCount = content ? content.split(/\s+/).filter(Boolean).length : 0;
+        loadingText.textContent = wordCount ? `Generated ${wordCount} words…` : 'Working…';
+      }
+      if (progressBar) {
+        const progress = content ? Math.min(12 + (content.length / 800) * 18, 85) : 12;
+        progressBar.style.width = `${progress}%`;
+      }
+    };
+
+    const removeOverlay = () => {
+      const loader = document.getElementById('ai-streaming-loader');
+      if (loader) loader.remove();
+    };
+
+    const showSuccessToast = () => {
+      const existing = document.getElementById('ai-success-message');
+      if (existing) existing.remove();
+      editor.addComponents(`
+        <div id="ai-success-message" style="
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #10B981;
+          color: white;
+          padding: 12px 14px;
+          border-radius: 10px;
+          z-index: 9999;
+          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.22);
+        ">
+          ✓ HTML generated
+        </div>
+      `);
+      setTimeout(() => {
+        const el = document.getElementById('ai-success-message');
+        if (el) el.remove();
+      }, 2200);
+    };
 
     try {
-      if (spinner) (spinner as HTMLElement).style.display = 'inline-block';
-      if (generateBtn) (generateBtn as HTMLButtonElement).disabled = true;
+      setBusy(true);
 
-      // If we have a page id, prefer streaming endpoint for progressive UX
-      if (pageId) {
-        // SIMPLIFIED: We now have a reliable backend route, so no need for the api/ prefix fallback.
+      // If we have a page id, prefer streaming endpoint for progressive UX.
+      // BUT:
+      // - Gemini models are not compatible with the chat-completions streaming route.
+      // - Some models (e.g. GPT-5.2 Pro) are Responses API only.
+      // In those cases, fall back to the synchronous /ai/generate endpoint.
+      const isResponsesOnlyModel = typeof selectedModel === 'string' && /-pro(\b|[-_])/.test(selectedModel);
+      const isGeminiModel = typeof selectedModel === 'string' && selectedModel.startsWith('gemini-');
+      const canStream = Boolean(pageId) && !isResponsesOnlyModel && !isGeminiModel;
+
+      if (canStream) {
+        // Use the /api alias so this works when the editor is served from the UI dev server (port 3000)
+        // and requests are proxied to the Rust backend.
         const streamUrl = `/api/pages/${pageId}/ai/generate/stream`;
-        const body = { prompt: detailedPrompt, model: selectedModel, system };
+        const body = { prompt: promptWithSelection, model: selectedModel, system };
 
         // Minimal SSE over fetch for PUT (browser EventSource only supports GET)
-        const createSSE = async (url: string, opts: { method: string; body?: any; headers?: any; onEvent: (evt: {event: string; data: string})=>void; onError: (err: any)=>void; onDone: ()=>void; }) => {
+        const createSSE = async (url: string, opts: {
+          method: string;
+          body?: any;
+          headers?: any;
+          onEvent: (evt: { event: string; data: string }) => void;
+          onError: (err: any) => void | Promise<void>;
+          onDone: () => void | Promise<void>;
+        }) => {
           try {
-            const resp = await fetch(url, { method: opts.method, headers: { ...(opts.headers||{}), 'Content-Type':'application/json' }, body: opts.body });
+            const resp = await fetch(url, {
+              method: opts.method,
+              credentials: 'same-origin',
+              headers: { ...(opts.headers || {}), 'Content-Type': 'application/json' },
+              body: opts.body,
+            });
             if (!resp.ok || !resp.body) throw new Error(`SSE request failed: ${resp.status}`);
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
@@ -374,110 +768,80 @@ export default (editor: any, opts: any = {}) => {
                 opts.onEvent({ event, data: dataLines.join('\n') });
               }
             }
-            opts.onDone();
-          } catch (e) { opts.onError(e); }
+            await opts.onDone();
+          } catch (e) {
+            await opts.onError(e);
+          }
         };
 
-        let rawJsonStream = '';
         let htmlContent = '';
         let target = component;
-        
-        // Create a more prominent loading indicator
-        const loadingIndicator = editor.addComponents(`
-          <div id="ai-streaming-loader" style="
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 9999;
-            text-align: center;
-            font-family: Arial, sans-serif;
-          ">
-            <div style="font-size: 18px; margin-bottom: 10px;">🤖 AI is generating your content...</div>
-            <div style="font-size: 14px; opacity: 0.8;" id="ai-loading-text">Initializing...</div>
-            <div style="margin-top: 15px;">
-              <div style="width: 200px; height: 4px; background: #333; border-radius: 2px; overflow: hidden;">
-                <div id="ai-progress-bar" style="width: 0%; height: 100%; background: #10B981; transition: width 0.3s ease;"></div>
-              </div>
-            </div>
-          </div>
-        `)?.[0];
 
-        const updateLoadingProgress = (content: string) => {
-          const loadingText = document.getElementById('ai-loading-text');
-          const progressBar = document.getElementById('ai-progress-bar');
-          if (loadingText) {
-            const wordCount = content.split(/\s+/).length;
-            loadingText.textContent = `Generated ${wordCount} words...`;
-          }
-          if (progressBar) {
-            // Simple progress estimation based on content length
-            const progress = Math.min((content.length / 1000) * 20, 80); // Cap at 80% until done
-            progressBar.style.width = `${progress}%`;
-          }
-        };
+        // If we are enhancing the selected element, don't progressively inject full HTML into the canvas;
+        // instead, stream progress in the overlay and replace the element once generation is complete.
+        const deferCanvasUpdatesUntilDone = Boolean(wantsEnhance && component);
 
-        const removeLoadingIndicator = () => {
-          const loader = document.getElementById('ai-streaming-loader');
-          if (loader) {
-            loader.remove();
-          }
-        };
+        // Use the shared overlay for streaming as well.
+        ensureOverlay();
+        updateOverlay('');
 
         if (!target) target = editor.addComponents('<div class="ai-html-streaming">Generating…</div>')?.[0];
         
         const replaceContent = (html: string) => {
-          console.log('Replacing content with:', html.substring(0, 100) + '...'); // Debug log
-          updateLoadingProgress(html);
+          updateOverlay(html);
+          if (deferCanvasUpdatesUntilDone) return;
           if (target) target.components(html);
           else editor.addComponents(html);
         };
 
-        // Helper function to safely extract HTML content from incomplete JSON stream
-        const extractHtmlFromStream = (jsonStream: string): string | null => {
-          try {
-            // Try to find the html_content field in the stream
-            const contentMatch = jsonStream.match(/"html_content"\s*:\s*"(.*)$/);
-            
-            if (contentMatch && contentMatch[1]) {
-              // We found the start of the HTML content
-              let currentHtml = contentMatch[1];
-              
-              // Clean up JSON escape sequences
-              currentHtml = currentHtml.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r').replace(/\\\\/g, '\\');
-              
-              // Remove trailing quote and bracket if present (indicates incomplete JSON)
-              if (currentHtml.endsWith('"}')) {
-                currentHtml = currentHtml.slice(0, -2);
-              } else if (currentHtml.endsWith('"')) {
-                currentHtml = currentHtml.slice(0, -1);
-              }
-              
-              return currentHtml;
-            }
-          } catch (e) {
-            console.log('Error extracting HTML from stream:', e);
-          }
-          return null;
-        };
         const syncFallback = async () => {
+          // Ensure we still show a visible loading micro-interaction in fallback mode.
+          ensureOverlay();
+          updateOverlay(htmlContent);
           try {
-            const response = await postWithFallback('/ai/generate', '/ai/generate', { prompt: detailedPrompt + `\nModel: ${selectedModel}`, field: 'html', page_title: '', model: selectedModel }, makeHeaders());
-            // The response from the refactored non-streaming endpoint is now the direct content.
-            const html = response?.data?.content || '';
-            if (!html) throw new Error('No content key in AI response');
-            replaceContent(html);
+            const response = await postWithFallback(
+              '/ai/generate',
+              '/ai/generate',
+              {
+                prompt: `${system}\n\n${promptWithSelection}`,
+                field: 'html',
+                page_title: '',
+                model: selectedModel,
+              },
+              makeHeaders(),
+            );
+            const content = response?.data?.content || '';
+            if (!content) throw new Error('Empty response from AI service');
+
+            const extracted = tryExtractHtmlFromJsonString(content);
+            const rawFinalHtml = extracted || content;
+
+            // Restore protected dynamic tokens (and verify we didn't lose any).
+            const missing = protectedTokens ? protectedTokens.missingPlaceholders(rawFinalHtml) : [];
+            if (protectedTokens && missing.length) {
+              alert(
+                `Enhancement aborted: the AI output removed ${missing.length} required dynamic placeholder(s). Please try again.`,
+              );
+              return;
+            }
+
+            const finalHtml = protectedTokens ? protectedTokens.restore(rawFinalHtml) : rawFinalHtml;
+            updateOverlay(finalHtml);
+
+            if (wantsEnhance) {
+              const ok = safeReplaceComponentWithHtml(component, finalHtml);
+              if (!ok) return;
+            } else {
+              replaceContent(finalHtml);
+            }
+            showSuccessToast();
             modal.close();
           } catch (e: any) {
             editor.log('HTML generation fallback failed', { level: 'error', ns: 'gjs-openai', error: e });
             alert(`HTML generation failed: ${e?.message || e}`);
           } finally {
-            if (spinner) (spinner as HTMLElement).style.display = 'none';
-            if (generateBtn) (generateBtn as HTMLButtonElement).disabled = false;
+            removeOverlay();
+            setBusy(false);
           }
         };
 
@@ -486,120 +850,121 @@ export default (editor: any, opts: any = {}) => {
           body: JSON.stringify(body),
           headers: makeHeaders(),
           onEvent: ({ event, data }) => {
-            console.log(`SSE Event: ${event}, Data: ${data.substring(0, 50)}...`); // Debug log
+            if (event === 'start') {
+              const loadingText = document.getElementById('ai-loading-text');
+              if (loadingText) loadingText.textContent = 'Streaming…';
+              return;
+            }
+
+            if (event === 'keepalive') {
+              return;
+            }
+
+            if (event === 'error') {
+              removeOverlay();
+              let msg = 'AI streaming error';
+              try {
+                const parsed = JSON.parse(data);
+                msg = parsed?.message || msg;
+              } catch {}
+              editor.log('Streaming error event for HTML generation', { level: 'error', ns: 'gjs-openai', msg });
+              alert(msg);
+              setBusy(false);
+              return;
+            }
+
             if (event === 'delta') {
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.delta) {
-                  rawJsonStream += parsed.delta;
-                  console.log(`Raw JSON stream length: ${rawJsonStream.length}`); // Debug log
-                  
-                  // Extract HTML content from the stream safely
-                  const extractedHtml = extractHtmlFromStream(rawJsonStream);
-                  if (extractedHtml && extractedHtml !== htmlContent) {
-                    htmlContent = extractedHtml;
-                    console.log(`Extracted HTML length: ${htmlContent.length}`); // Debug log
-                    replaceContent(htmlContent);
-                  }
-                }
-              } catch (e) {
-                // If JSON parsing fails, treat the data as raw HTML content
-                console.log('JSON parsing failed, treating as raw data:', e);
-                rawJsonStream += data;
-                console.log(`Raw stream length (raw data): ${rawJsonStream.length}`); // Debug log
-                // Try to extract HTML from the raw stream
-                const extractedHtml = extractHtmlFromStream(rawJsonStream);
-                if (extractedHtml && extractedHtml !== htmlContent) {
-                  htmlContent = extractedHtml;
+                if (typeof parsed?.delta === 'string' && parsed.delta.length) {
+                  htmlContent += parsed.delta;
                   replaceContent(htmlContent);
                 }
-              }
-            } else if (event === 'done') {
-              console.log('Stream completed, final JSON stream length:', rawJsonStream.length); // Debug log
-              
-              // Final parse: ensure we have the complete content
-              try {
-                const finalObject = JSON.parse(rawJsonStream);
-                const finalHtml = finalObject.html_content || htmlContent;
-                if (finalHtml && finalHtml !== htmlContent) {
-                  replaceContent(finalHtml);
-                }
               } catch (e) {
-                console.log('Final JSON parse failed, using extracted content:', e);
-                // Use the last successfully extracted HTML
-                if (htmlContent) {
-                  replaceContent(htmlContent);
-                }
+                // If something goes off-format, append raw data and continue.
+                htmlContent += data;
+                replaceContent(htmlContent);
               }
-              
-              // Remove loading indicator and show completion
-              removeLoadingIndicator();
-              
-              // Show a brief success message
-              const successIndicator = editor.addComponents(`
-                <div id="ai-success-message" style="
-                  position: fixed;
-                  top: 20px;
-                  right: 20px;
-                  background: #10B981;
-                  color: white;
-                  padding: 15px 20px;
-                  border-radius: 8px;
-                  z-index: 9999;
-                  font-family: Arial, sans-serif;
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                  animation: slideIn 0.3s ease;
-                ">
-                  ✓ AI content generated successfully!
-                </div>
-                <style>
-                  @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                  }
-                </style>
-              `)?.[0];
-              
-              // Remove success message after 3 seconds
-              setTimeout(() => {
-                const successMsg = document.getElementById('ai-success-message');
-                if (successMsg) {
-                  successMsg.style.animation = 'slideIn 0.3s ease reverse';
-                  setTimeout(() => successMsg.remove(), 300);
-                }
-              }, 3000);
-              
-              if (spinner) (spinner as HTMLElement).style.display = 'none';
-              if (generateBtn) (generateBtn as HTMLButtonElement).disabled = false;
+              return;
+            }
+
+            if (event === 'done') {
+              // Restore protected dynamic tokens (and verify we didn't lose any).
+              const missing = protectedTokens ? protectedTokens.missingPlaceholders(htmlContent) : [];
+              if (protectedTokens && missing.length) {
+                removeOverlay();
+                alert(
+                  `Enhancement aborted: the AI output removed ${missing.length} required dynamic placeholder(s). Please try again.`,
+                );
+                return;
+              }
+
+              const finalHtml = protectedTokens ? protectedTokens.restore(htmlContent) : htmlContent;
+              updateOverlay(finalHtml);
+              removeOverlay();
+
+              if (wantsEnhance) {
+                const ok = safeReplaceComponentWithHtml(component, finalHtml);
+                if (!ok) return;
+              }
+              showSuccessToast();
               modal.close();
             }
           },
-          onError: (err) => {
+          onError: async (err) => {
             editor.log('Streaming error for HTML generation', { level: 'error', ns: 'gjs-openai', err });
             // Fall back to non-streaming generation when SSE is unavailable
-            syncFallback();
+            await syncFallback();
           },
           onDone: () => { /* finalization already handled via done event */ }
         });
-        runSSE(streamUrl);
+        await runSSE(streamUrl);
+        return;
       } else {
+        // Immediate feedback for non-streaming flows (Gemini/pro/etc.)
+        ensureOverlay();
+        updateOverlay('');
+
         // Fallback: synchronous generation via generic endpoint
-        const response = await postWithFallback('/ai/generate', '/ai/generate', { prompt: detailedPrompt + `\nModel: ${selectedModel}`, field: 'html', page_title: '', model: selectedModel }, makeHeaders());
-        const html = response?.data?.content || '';
-        if (!html) throw new Error('No content key in AI response');
-        if (component) {
-          const parent = component.parent();
-          const index = component.index();
-          parent.components().add(html, { at: index });
-          component.remove();
-        } else { editor.addComponents(html); }
+        const response = await postWithFallback(
+          '/ai/generate',
+          '/ai/generate',
+          {
+            prompt: `${system}\n\n${promptWithSelection}`,
+            field: 'html',
+            page_title: '',
+            model: selectedModel,
+          },
+          makeHeaders(),
+        );
+        const content = response?.data?.content || '';
+        if (!content) throw new Error('Empty response from AI service');
+        const rawHtml = tryExtractHtmlFromJsonString(content) || content;
+
+        // Restore protected dynamic tokens (and verify we didn't lose any).
+        const missing = protectedTokens ? protectedTokens.missingPlaceholders(rawHtml) : [];
+        if (protectedTokens && missing.length) {
+          removeOverlay();
+          alert(
+            `Enhancement aborted: the AI output removed ${missing.length} required dynamic placeholder(s). Please try again.`,
+          );
+          return;
+        }
+
+        const html = protectedTokens ? protectedTokens.restore(rawHtml) : rawHtml;
+        updateOverlay(html);
+        const ok = wantsEnhance ? safeReplaceComponentWithHtml(component, html) : safeReplaceComponentWithHtml(component, html);
+        if (!ok) return;
+        removeOverlay();
+        showSuccessToast();
         modal.close();
       }
     } catch (error: any) {
       editor.log(`Failed to generate HTML: ${error?.message || error}`, { level: 'error', ns: 'gjs-openai' });
+      alert(`Failed to generate HTML: ${error?.message || error}`);
     } finally {
-      if (spinner) (spinner as HTMLElement).style.display = 'none';
-      if (generateBtn) (generateBtn as HTMLButtonElement).disabled = false;
+      removeOverlay();
+      setBusy(false);
     }
   }
 
@@ -813,6 +1178,12 @@ export default (editor: any, opts: any = {}) => {
         .gjs-btn-primary{background:#10B981;color:#0b1220;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:600}
         .gjs-btn-secondary{background:#1F2937;color:#e5e7eb;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
         .gjs-inline-note{font-size:12px;opacity:.75}
+        .gjs-btn-primary:disabled,.gjs-btn-secondary:disabled{opacity:.6;cursor:not-allowed}
+        .gjs-btn-primary.is-loading{animation:gjs-btn-pulse 1.1s ease-in-out infinite;}
+        @keyframes gjs-btn-pulse{0%,100%{filter:saturate(1);transform:translateY(0)}50%{filter:saturate(1.15);transform:translateY(-1px)}}
+        .gjs-inline-spinner{display:inline-flex;align-items:center;gap:8px;font-size:12px;opacity:.85}
+        .gjs-inline-spinner .gjs-spinner-dot{width:12px;height:12px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:gjs-spin .75s linear infinite}
+        @keyframes gjs-spin{to{transform:rotate(360deg)}}
       </style>
       <h3 style="margin:0 0 8px;font-size:16px;">AI HTML Generator</h3>
       <div style="display:flex; gap:8px; margin-bottom:8px;">
@@ -856,7 +1227,7 @@ export default (editor: any, opts: any = {}) => {
       <div class="gjs-openai-actions">
         <button id="toggle-input-mode" class="gjs-btn-secondary">Switch to Structured Input</button>
         <div style="display:flex; gap:8px; align-items:center;">
-          <span id="html-spinner" style="display:none">Generating…</span>
+          <span id="html-spinner" class="gjs-inline-spinner" style="display:none"><span class="gjs-spinner-dot"></span><span>Generating…</span></span>
           <button id="generate-html-btn" class="gjs-btn-primary">Generate HTML</button>
         </div>
       </div>
