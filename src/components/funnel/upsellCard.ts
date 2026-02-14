@@ -68,7 +68,16 @@ class DOMUpdater {
     
     if (this.pendingUpdates.size === 0) return;
 
-    console.log(`🔄 Retrying ${this.pendingUpdates.size} pending DOM updates`);
+    // Enforce max retries to prevent infinite loops
+    this.retryCount++;
+    if (this.retryCount > this.MAX_RETRIES) {
+      console.warn(`⚠️ DOM update retries exhausted (${this.MAX_RETRIES}). Abandoning ${this.pendingUpdates.size} pending updates:`, 
+        Array.from(this.pendingUpdates.keys()));
+      this.pendingUpdates.clear();
+      return;
+    }
+
+    console.log(`🔄 Retrying ${this.pendingUpdates.size} pending DOM updates (attempt ${this.retryCount}/${this.MAX_RETRIES})`);
     const updates = Array.from(this.pendingUpdates.entries());
     
     for (const [selector, update] of updates) {
@@ -87,7 +96,7 @@ class DOMUpdater {
       }
     }
 
-    // If still have pending updates, schedule another retry
+    // If still have pending updates, schedule another retry (respecting max)
     if (this.pendingUpdates.size > 0) {
       console.log(`⏳ Still ${this.pendingUpdates.size} pending, retrying in 200ms`);
       this.retryTimeout = window.setTimeout(() => {
@@ -95,6 +104,7 @@ class DOMUpdater {
       }, 200);
     } else {
       console.log('✅ All pending DOM updates completed');
+      this.retryCount = 0; // Reset for next batch
     }
   }
 
