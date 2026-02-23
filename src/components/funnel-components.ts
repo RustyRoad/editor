@@ -371,7 +371,13 @@ const createOfferStore = (): OfferStore => {
       return Promise.resolve(offers);
     }
 
-    fetchPromise = fetch('/api/admin/offers/list-simple', {
+    // Use the TypeScript API base URL for proper routing
+    const apiBaseUrl = typeof window !== 'undefined' && window.location.port === '3000'
+      ? `http://${window.location.hostname}:8081`
+      : '';
+    const url = `${apiBaseUrl}/api/admin/offers/list-simple`;
+
+    fetchPromise = fetch(url, {
       credentials: 'include',
       headers: { Accept: 'application/json' },
     })

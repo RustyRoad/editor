@@ -50,7 +50,7 @@ const simpleHash = (str: string): number => {
 // Auto-detect environment and generate customer ID
 const getChatConfig = () => {
   const isDev = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
+    window.location.hostname === '0.0.0.0' || 
     window.location.hostname.includes('dev') ||
     window.location.port === '8081'
   );
@@ -68,7 +68,7 @@ const getChatConfig = () => {
   }
 
   return {
-    apiUrl: isDev ? 'http://localhost:8081' : 'https://api.spotlessbinco.com',
+    apiUrl: isDev ? 'http://0.0.0.0:8081' : 'https://api.spotlessbinco.com',
     customerId,
     environment: isDev ? 'development' : 'production'
   };
