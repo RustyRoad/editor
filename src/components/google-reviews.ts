@@ -105,11 +105,13 @@ export default (editor: Editor) => {
       
       // Generate the Tera template when exporting
       toHTML() {
-        const maxReviews = this.get('traits').where({ name: 'maxReviews' })[0]?.get('value') || 6;
-        const minRating = this.get('traits').where({ name: 'minRating' })[0]?.get('value') || '4';
-        const layout = this.get('traits').where({ name: 'layout' })[0]?.get('value') || 'grid';
-        const showHeader = this.get('traits').where({ name: 'showHeader' })[0]?.get('value') !== false;
-        const showGoogleLink = this.get('traits').where({ name: 'showGoogleLink' })[0]?.get('value') !== false;
+        const traits = this.get('traits');
+        const getTraitValue = (name: string) => traits?.where?.({ name })?.[0]?.get?.('value');
+        const maxReviews = getTraitValue('maxReviews') || 6;
+        const minRating = getTraitValue('minRating') || '4';
+        const layout = getTraitValue('layout') || 'grid';
+        const showHeader = getTraitValue('showHeader') !== false;
+        const showGoogleLink = getTraitValue('showGoogleLink') !== false;
         const theme = 'dark'; // Could be a trait too
         
         // Output Tera template with variable assignments and include

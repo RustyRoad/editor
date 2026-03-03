@@ -86,6 +86,6 @@ async function processGeocodeResponse(geocodePayload: any, feedbackElement: HTML
 }
 
 function populateFormFields(apiAddress: any): void {
-  const fields: [string, string, string][] = [['address1', 'line1'], ['city', 'city'], ['state', 'state'], ['zip5', 'postal_code']];
+  const fields: [string, string][] = [['address1', 'line1'], ['city', 'city'], ['state', 'state'], ['zip5', 'postal_code']];
   fields.forEach(([id, key]) => { const el = document.getElementById(id); if (el) (el as HTMLInputElement).value = apiAddress[key]; });
 }

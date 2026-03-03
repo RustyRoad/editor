@@ -1,4 +1,5 @@
 /// <reference path="../../types/externals.d.ts" />
+import type { MapManager } from './map-manager';
 
 export interface WaitForElementOptions {
   selector: string;

@@ -1,4 +1,4 @@
-import { MapManager } from './map-manager';
+import { MapManager } from '../locationService';
 import { LocationService } from './location-service';
 import { waitForLeaflet } from './wait-for-leaflet';
 import { waitForElement } from './wait-for-element';
@@ -8,9 +8,12 @@ import { setupMapManagerCallback } from './setup-map-callback';
 import { formatAddressForDisplay } from './address-formatter';
 import { CONTENT_ELEMENT_SELECTOR, WAIT_FOR_ELEMENT_TIMEOUT, UI_LISTENERS_SETUP_COMPLETE_CLASS } from './ui-constants';
 
-export async function initLocationService(mapContainerElement: HTMLElement, options: Record<string, any> = {}): Promise<MapManager | null> {
+export async function initLocationService(
+  mapContainerElement: HTMLElement,
+  options: Record<string, unknown> = {}
+): Promise<Window['mapManager'] | null> {
   if (!mapContainerElement) throw new Error('Map container element not provided.');
-  const { feedbackContainerOverride } = options;
+  const feedbackContainerOverride = (options.feedbackContainerOverride as HTMLElement | null | undefined) ?? null;
 
   window.formatAddressForDisplayHelper = formatAddressForDisplay;
   initGlobalFlags();
@@ -50,7 +53,7 @@ function initGlobalFlags(): void {
   if (typeof window.mapServiceInitializing === 'undefined') window.mapServiceInitializing = false;
 }
 
-async function waitForInitialization(): Promise<MapManager | null> {
+async function waitForInitialization(): Promise<Window['mapManager'] | null> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     const checkInterval = setInterval(() => {
